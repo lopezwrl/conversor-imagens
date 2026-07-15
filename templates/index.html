@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revela — Conversor de Imagens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="background-decoration"></div>
+
+<header class="topo">
+  <div class="header-content">
+    <div class="header-left">
+      <div class="logo-area">
+        <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+          <rect x="4" y="4" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+          <rect x="18" y="4" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+          <rect x="4" y="18" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+          <rect x="18" y="18" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <h1>Revela</h1>
+      </div>
+      <p class="subtitulo">Transforme suas imagens de forma inteligente</p>
+    </div>
+    <button id="toggle-tema" class="toggle-tema" title="Alternar tema">
+      <svg class="icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="painel-entrada">
+    <div class="zona-arraste" id="zona-arraste" tabindex="0">
+      <div class="upload-icon">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      </div>
+      <div class="upload-text">
+        <p class="upload-title">Solte aqui ou clique para adicionar</p>
+        <p class="upload-subtitle">Fotos, pastas ou múltiplos arquivos</p>
+      </div>
+      <span class="aviso-navegador" id="aviso-navegador" hidden>
+        ⚠️ Navegador compatível: Chrome, Edge, Brave
+      </span>
+    </div>
+    <p class="dica" id="mensagem-erro"></p>
+  </section>
+
+  <section class="painel-lote" id="painel-lote" hidden>
+    <div class="section-header">
+      <h2>Ajustes em Lote</h2>
+      <p>Aplique configurações para todas as imagens (customize individualmente depois)</p>
+    </div>
+    
+    <div class="controles-lote">
+      <div class="campo">
+        <label>Formato</label>
+        <select id="lote-formato">
+          <option value="">Manter original</option>
+          <option value="PNG">PNG</option>
+          <option value="JPEG">JPEG</option>
+          <option value="WEBP">WEBP</option>
+          <option value="BMP">BMP</option>
+          <option value="GIF">GIF</option>
+          <option value="TIFF">TIFF</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Largura (px)</label>
+        <input type="number" id="lote-largura" min="1" placeholder="Padrão">
+      </div>
+      <div class="campo">
+        <label>Altura (px)</label>
+        <input type="number" id="lote-altura" min="1" placeholder="Padrão">
+      </div>
+      <div class="campo">
+        <label>Qualidade</label>
+        <input type="number" id="lote-qualidade" min="1" max="100" value="90">
+      </div>
+      <button id="btn-aplicar-lote" class="botao-secundario">Aplicar</button>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="usar-zip" checked>
+      <label for="usar-zip">Baixar como ZIP</label>
+    </div>
+  </section>
+
+  <section class="tira-filme" id="tira-filme"></section>
+
+  <section class="painel-acao" id="painel-acao" hidden>
+    <div class="acao-container">
+      <button id="btn-converter" class="botao-primario grande">
+        <span class="btn-text">Revelar</span>
+        <span class="btn-icon">→</span>
+      </button>
+      <button id="btn-adicionar-mais" class="btn-adicionar-mais" title="Adicionar mais imagens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+    </div>
+    <p class="dica" id="mensagem-destino"></p>
+  </section>
+
+  <section class="painel-resultado" id="painel-resultado" hidden>
+    <div class="section-header">
+      <h2>Concluído</h2>
+      <p id="resumo-resultado"></p>
+    </div>
+    <ul id="lista-resultado"></ul>
+    <button id="btn-nova-sessao" class="botao-primario" style="margin-top: 2rem; width: 100%;">
+      Processar mais imagens
+    </button>
+  </section>
+</main>
+
+<!-- INPUTS OCULTOS -->
+<input type="file" id="input-fotos" accept="image/*" multiple hidden>
+<input type="file" id="input-pasta" webkitdirectory directory hidden>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
