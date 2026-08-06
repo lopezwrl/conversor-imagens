@@ -130,6 +130,10 @@ function lerArquivosDeDiretorio(entradaDiretorio) {
           if (entrada.isFile && extensaoValida(entrada.name)) {
             const arquivo = await new Promise((resolveArquivo) => entrada.file(resolveArquivo));
             encontrados.push(arquivo);
+          } else if (entrada.isDirectory) {
+            // Entra em subpastas também
+            const subArquivos = await lerArquivosDeDiretorio(entrada);
+            encontrados.push(...subArquivos);
           }
         }
         lerLote();
@@ -166,17 +170,25 @@ zonaArraste.addEventListener("drop", async (e) => {
     return;
   }
 
+  // IMPORTANTE: capturamos todas as "entries" de forma síncrona, ANTES de
+  // qualquer await. Assim que o handler do evento passa por um await, o
+  // navegador pode invalidar o DataTransferItemList — se isso acontecer no
+  // meio do loop (ex.: ao ler uma pasta), os itens seguintes (outra pasta,
+  // outro arquivo) deixam de ser lidos. Por isso a pasta às vezes "sumia"
+  // ao arrastar, mas arquivos soltos funcionavam.
+  const entradas = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const entrada = item.webkitGetAsEntry && item.webkitGetAsEntry();
+    if (entrada) entradas.push(entrada);
+  }
+
   const encontrados = [];
   let nomePasta = "convertidas";
   let temPasta = false;
   let contadorArquivos = 0;
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const entrada = item.webkitGetAsEntry && item.webkitGetAsEntry();
-
-    if (!entrada) continue;
-
+  for (const entrada of entradas) {
     if (entrada.isDirectory) {
       temPasta = true;
       nomePasta = entrada.name;
@@ -484,12 +496,14 @@ function aplicarLoteATodos() {
   const largura = document.getElementById("lote-largura").value;
   const altura = document.getElementById("lote-altura").value;
   const qualidade = document.getElementById("lote-qualidade").value;
+  const proporcao = document.getElementById("lote-proporcao").value;
 
   document.querySelectorAll(".quadro").forEach((quadro) => {
     if (formato) quadro.querySelector(".input-formato").value = formato;
     if (largura) quadro.querySelector(".input-largura").value = largura;
     if (altura) quadro.querySelector(".input-altura").value = altura;
     if (qualidade) quadro.querySelector(".input-qualidade").value = qualidade;
+    if (proporcao) quadro.querySelector(".input-proporcao").checked = proporcao === "on";
   });
 }
 
