@@ -24,6 +24,11 @@ const barraProgressoContainer = document.getElementById("barra-progresso-contain
 const barraProgresso = document.getElementById("barra-progresso");
 const textoProgresso = document.getElementById("texto-progresso");
 const etapasProcessamento = document.getElementById("etapas-processamento");
+const filaProcessamento = document.getElementById("fila-processamento");
+const filaLista = document.getElementById("fila-lista");
+const filaContador = document.getElementById("fila-contador");
+const estatisticasResultado = document.getElementById("estatisticas-resultado");
+const gradeResultado = document.getElementById("grade-resultado");
 
 const EXTENSOES_VALIDAS = ["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff", "tif"];
 
@@ -34,6 +39,8 @@ const ICONES = {
   alerta: `<svg class="icone-alerta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+  download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+  seta: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 6 21 12 15 18"></polyline><polyline points="9 6 3 12 9 18"></polyline></svg>`,
 };
 
 // ===== CRIAR HASH ÚNICO PARA ARQUIVO =====
@@ -249,6 +256,10 @@ if (btnNovaSessao) {
     painelLote.hidden = true;
     painelAcao.hidden = true;
     painelResultado.hidden = true;
+    if (gradeResultado) gradeResultado.innerHTML = "";
+    if (estatisticasResultado) estatisticasResultado.innerHTML = "";
+    if (filaLista) filaLista.innerHTML = "";
+    if (filaProcessamento) { filaProcessamento.hidden = true; filaProcessamento.classList.remove("ativo"); }
     mensagemErro.textContent = "";
     if (loteNomeBase) loteNomeBase.value = "";
     zonaArraste.scrollIntoView({ behavior: "smooth" });
@@ -524,6 +535,7 @@ function ativarCarregamento(ativo) {
     }
     if (etapasProcessamento) etapasProcessamento.hidden = true;
     document.querySelectorAll(".quadro").forEach((q) => q.classList.remove("carregando-shimmer"));
+    esconderFila();
   }
 }
 
@@ -572,6 +584,79 @@ function atualizarProgresso(indice, total, etapaOuConcluido) {
   atualizarEtapaIndicador(etapaOuConcluido);
 }
 
+// ===== FILA VISUAL DE PROCESSAMENTO =====
+// Mostra cada imagem do lote com seu status (pendente / processando /
+// concluída / erro), na mesma ordem em que o servidor as processa —
+// que é sempre a ordem de envio (ver comentário em converterImagens()).
+let indiceFilaAtual = 0;
+let totalFilaAtual = 0;
+
+function montarFila(nomes) {
+  if (!filaLista) return;
+  filaLista.innerHTML = "";
+  indiceFilaAtual = 0;
+  totalFilaAtual = nomes.length;
+
+  nomes.forEach((nome, i) => {
+    const item = document.createElement("li");
+    item.className = "fila-item";
+    item.dataset.indice = i;
+    item.style.animationDelay = `${Math.min(i * 0.03, 0.3)}s`;
+    item.innerHTML = `
+      <span class="fila-item-icone"><span class="ponto-pendente"></span></span>
+      <span class="fila-item-nome">${nome}</span>
+    `;
+    filaLista.appendChild(item);
+  });
+
+  atualizarContadorFila();
+  if (filaProcessamento) {
+    filaProcessamento.hidden = false;
+    requestAnimationFrame(() => filaProcessamento.classList.add("ativo"));
+  }
+  if (nomes.length) marcarItemFila(0, "processando");
+}
+
+function atualizarContadorFila() {
+  if (!filaContador) return;
+  const concluidos = Math.min(indiceFilaAtual, totalFilaAtual);
+  filaContador.textContent = totalFilaAtual ? `${concluidos} de ${totalFilaAtual}` : "";
+}
+
+function marcarItemFila(indice, status) {
+  const item = filaLista && filaLista.querySelector(`.fila-item[data-indice="${indice}"]`);
+  if (!item) return;
+  item.classList.remove("pendente", "processando", "concluida", "erro");
+  item.classList.add(status);
+
+  const icone = item.querySelector(".fila-item-icone");
+  if (status === "processando") {
+    icone.innerHTML = `<span class="anel-processando"></span>`;
+  } else if (status === "concluida") {
+    icone.innerHTML = ICONES.check;
+  } else if (status === "erro") {
+    icone.innerHTML = ICONES.x;
+  } else {
+    icone.innerHTML = `<span class="ponto-pendente"></span>`;
+  }
+}
+
+// Avança a fila: fecha o item atual (sucesso ou erro) e abre o próximo.
+function avancarFila(statusItemAtual) {
+  marcarItemFila(indiceFilaAtual, statusItemAtual);
+  indiceFilaAtual++;
+  atualizarContadorFila();
+  if (indiceFilaAtual < totalFilaAtual) {
+    marcarItemFila(indiceFilaAtual, "processando");
+  }
+}
+
+function esconderFila() {
+  if (!filaProcessamento) return;
+  filaProcessamento.classList.remove("ativo");
+  setTimeout(() => { filaProcessamento.hidden = true; }, 400);
+}
+
 // ===== BASE64 -> BLOB E DOWNLOAD =====
 function base64ParaBlob(base64, mime) {
   const bytes = atob(base64);
@@ -601,11 +686,13 @@ let modosRemocaoUltimaConversao = {};
 async function converterImagens() {
   ativarCarregamento(true);
   mensagemErro.textContent = "";
+  montarFila(imagensAtuais.map((img) => img.nome));
 
   const formData = new FormData();
   const config = {};
   modosRemocaoUltimaConversao = {};
   let algumModoManual = false;
+  let ordemEnvio = 0;
 
   document.querySelectorAll(".quadro").forEach((quadro) => {
     const indice = Number(quadro.dataset.indice);
@@ -621,7 +708,10 @@ async function converterImagens() {
     if (removerFundoAtivo && modoRemocao === "manual") algumModoManual = true;
     modosRemocaoUltimaConversao[img.nome] = removerFundoAtivo ? modoRemocao : null;
 
-    config[img.nome] = {
+    // Chave pela ordem de envio (não pelo nome do arquivo): imagens com o
+    // mesmo nome original (ex.: fotos de câmeras/pastas diferentes ambas
+    // chamadas "IMG_0001.jpg") não podem dividir a mesma configuração.
+    config[ordemEnvio] = {
       formato: quadro.querySelector(".input-formato").value,
       largura: quadro.querySelector(".input-largura").value || null,
       altura: quadro.querySelector(".input-altura").value || null,
@@ -632,6 +722,7 @@ async function converterImagens() {
       cor_fundo: quadro.querySelector(".input-cor-fundo").value,
       novo_nome: novoNomeBruto || null,
     };
+    ordemEnvio++;
   });
 
   // O modo "Manual" precisa do arquivo individual (fora do zip) para abrir
@@ -646,6 +737,7 @@ async function converterImagens() {
   formData.append("usar_zip", usarZipAtivo);
 
   const resultados = [];
+  let streamConcluido = false;
 
   try {
     const resposta = await fetch("/api/converter-lote", { method: "POST", body: formData });
@@ -686,6 +778,7 @@ async function converterImagens() {
           atualizarProgresso(evento.indice, evento.total, evento.etapa);
         } else if (evento.tipo === "resultado") {
           resultados.push(evento);
+          avancarFila(evento.status === "ok" ? "concluida" : "erro");
           // Itens no modo "manual" NÃO são baixados aqui: o usuário ainda
           // vai corrigir a máscara no editor, e o download correto (já
           // corrigido) acontece só quando ele clicar em "Confirmar e
@@ -697,6 +790,7 @@ async function converterImagens() {
             baixarBlob(blob, evento.salvo_como);
           }
         } else if (evento.tipo === "concluido") {
+          streamConcluido = true;
           atualizarProgresso(0, 1, "concluido");
           if (usarZipAtivo && evento.zip_base64) {
             const blob = base64ParaBlob(evento.zip_base64, "application/zip");
@@ -706,9 +800,52 @@ async function converterImagens() {
       }
     }
 
+    if (!streamConcluido) {
+      // A conexão terminou sem o evento final "concluido" — o lote foi
+      // interrompido no meio do processamento (em geral, um timeout do
+      // servidor numa imagem que demorou demais), não um erro comum de
+      // rede. O usuário precisa saber exatamente quantas terminaram antes
+      // da interrupção, em vez de receber um resumo que parece completo.
+      const total = imagensAtuais.length;
+      mensagemErro.textContent =
+        `A conversão foi interrompida antes de terminar: ${resultados.length} de ${total} ` +
+        `imagem(ns) foram processadas antes da interrupção (provavelmente por demorar demais em ` +
+        `alguma imagem). As processadas até aqui estão na lista abaixo — tente novamente com um ` +
+        `lote menor ou sem remoção de fundo se isso persistir.`;
+
+      // O ZIP nunca chegou a ser fechado no servidor (só fecha depois do
+      // lote inteiro), mas cada resultado individual já veio com seus
+      // próprios bytes — então nada do que já foi processado se perde.
+      if (usarZipAtivo) {
+        resultados.forEach((r) => {
+          const modoDoItem = modosRemocaoUltimaConversao[r.nome];
+          if (r.status === "ok" && r.dados && modoDoItem !== "manual") {
+            const blob = base64ParaBlob(r.dados, r.mime);
+            baixarBlob(blob, r.salvo_como);
+          }
+        });
+      }
+    }
+
     exibirResultado(resultados);
   } catch (erro) {
-    mensagemErro.textContent = "Erro na comunicação com o servidor. Verifique sua conexão e tente novamente.";
+    if (resultados.length) {
+      mensagemErro.textContent =
+        `A conexão caiu durante o processamento: ${resultados.length} de ${imagensAtuais.length} ` +
+        `imagem(ns) foram concluídas antes da queda.`;
+      if (usarZipAtivo) {
+        resultados.forEach((r) => {
+          const modoDoItem = modosRemocaoUltimaConversao[r.nome];
+          if (r.status === "ok" && r.dados && modoDoItem !== "manual") {
+            const blob = base64ParaBlob(r.dados, r.mime);
+            baixarBlob(blob, r.salvo_como);
+          }
+        });
+      }
+      exibirResultado(resultados);
+    } else {
+      mensagemErro.textContent = "Erro na comunicação com o servidor. Verifique sua conexão e tente novamente.";
+    }
   } finally {
     ativarCarregamento(false);
   }
@@ -741,6 +878,64 @@ function dispararConfete() {
   setTimeout(() => burst.remove(), 1200);
 }
 
+// ===== FORMATAÇÃO DE TAMANHOS (KB/MB) =====
+function formatarTamanho(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  return `${Math.max(0, Math.round(bytes / 1024 * 10) / 10)}KB`;
+}
+
+function tamanhoBase64EmBytes(base64) {
+  if (!base64) return 0;
+  let padding = 0;
+  if (base64.endsWith("==")) padding = 2;
+  else if (base64.endsWith("=")) padding = 1;
+  return Math.floor((base64.length * 3) / 4) - padding;
+}
+
+// ===== COMPARADOR ANTES / DEPOIS (arrastar para revelar original × resultado) =====
+// Mostra o "antes" (arquivo enviado) sobre o "depois" (resultado processado),
+// recortado por um divisor arrastável. O quadriculado de fundo do próprio
+// container já denuncia áreas realmente transparentes no resultado.
+function criarComparadorAntesDepois(urlOriginal, urlResultado, nomeAlt) {
+  const container = document.createElement("div");
+  container.className = "comparador-antes-depois";
+  container.innerHTML = `
+    <img class="comparador-img comparador-resultado" src="${urlResultado}" alt="${nomeAlt} — resultado" draggable="false">
+    <img class="comparador-img comparador-original" src="${urlOriginal}" alt="${nomeAlt} — original" draggable="false">
+    <div class="comparador-linha">
+      <div class="comparador-alca">${ICONES.seta}</div>
+    </div>
+    <span class="comparador-label comparador-label-esquerda">ORIGINAL</span>
+    <span class="comparador-label comparador-label-direita">RESULTADO</span>
+  `;
+
+  function definirPosicao(clientX) {
+    const rect = container.getBoundingClientRect();
+    const pct = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+    container.style.setProperty("--pos", `${pct}%`);
+  }
+
+  let arrastando = false;
+  container.addEventListener("pointerdown", (e) => {
+    arrastando = true;
+    container.classList.add("arrastando");
+    if (container.setPointerCapture) {
+      try { container.setPointerCapture(e.pointerId); } catch { /* ignora */ }
+    }
+    definirPosicao(e.clientX);
+  });
+  container.addEventListener("pointermove", (e) => {
+    if (!arrastando) return;
+    definirPosicao(e.clientX);
+  });
+  const soltar = () => { arrastando = false; container.classList.remove("arrastando"); };
+  container.addEventListener("pointerup", soltar);
+  container.addEventListener("pointercancel", soltar);
+  container.addEventListener("pointerleave", () => { if (!arrastando) return; });
+
+  return container;
+}
+
 function exibirResultado(resultados) {
   painelResultado.hidden = false;
   const sucesso = resultados.filter((r) => r.status === "ok").length;
@@ -749,39 +944,125 @@ function exibirResultado(resultados) {
     ? `${sucesso} imagem(ns) processada(s) com sucesso, ${falhas} com erro.`
     : `${sucesso} imagem(ns) processada(s) com sucesso!`;
 
-  const lista = document.getElementById("lista-resultado");
-  lista.innerHTML = "";
-  resultados.forEach((r) => {
-    const li = document.createElement("li");
-    if (r.status === "ok") {
-      const avisoHtml = r.aviso ? `<span class="aviso-resultado">${ICONES.alerta}${r.aviso}</span>` : "";
-      li.innerHTML = `
-        <span>${r.nome} → <strong>${r.salvo_como}</strong>${avisoHtml}</span>
-        <span class="resultado-status-grupo">
-          <span class="status-ok">${ICONES.check}${r.dimensoes}</span>
-        </span>
-      `;
-
-      const modo = modosRemocaoUltimaConversao[r.nome];
-      if (modo === "manual" && r.dados) {
-        const btnEditar = document.createElement("button");
-        btnEditar.type = "button";
-        btnEditar.className = "botao-secundario btn-editar-mascara";
-        btnEditar.textContent = "Editar máscara";
-        btnEditar.addEventListener("click", () => {
-          abrirEditorMascara({
-            dadosBase64: r.dados,
-            mime: r.mime,
-            nomeArquivo: r.salvo_como,
-          });
-        });
-        li.querySelector(".resultado-status-grupo").appendChild(btnEditar);
-      }
-    } else {
-      li.innerHTML = `<span>${r.nome}${r.mensagem ? ` — ${r.mensagem}` : ""}</span><span class="status-erro">${ICONES.x}Erro</span>`;
-    }
-    lista.appendChild(li);
+  // ----- estatísticas agregadas (tamanho original -> final, economia) -----
+  let tamanhoOriginalTotal = 0;
+  let tamanhoFinalTotal = 0;
+  resultados.forEach((r, i) => {
+    const original = imagensAtuais[i];
+    if (original) tamanhoOriginalTotal += original.file.size;
+    if (r.status === "ok" && r.dados) tamanhoFinalTotal += tamanhoBase64EmBytes(r.dados);
   });
+
+  if (estatisticasResultado) {
+    estatisticasResultado.innerHTML = "";
+    const chips = [
+      { rotulo: "Total", valor: `${resultados.length}`, sub: "imagem(ns)" },
+      { rotulo: "Concluídas", valor: `${sucesso}`, classe: "stat-sucesso" },
+    ];
+    if (falhas > 0) chips.push({ rotulo: "Falharam", valor: `${falhas}`, classe: "stat-falha" });
+    if (tamanhoOriginalTotal > 0 && tamanhoFinalTotal > 0) {
+      const reducao = Math.round((1 - tamanhoFinalTotal / tamanhoOriginalTotal) * 1000) / 10;
+      chips.push({
+        rotulo: "Tamanho",
+        valor: `${formatarTamanho(tamanhoOriginalTotal)} → ${formatarTamanho(tamanhoFinalTotal)}`,
+        sub: reducao > 0 ? `${reducao}% de redução` : reducao < 0 ? `${Math.abs(reducao)}% maior` : "sem alteração",
+        classe: "stat-economia",
+      });
+    }
+    chips.forEach((c, i) => {
+      const chip = document.createElement("div");
+      chip.className = `stat-chip ${c.classe || ""}`;
+      chip.style.animationDelay = `${i * 0.05}s`;
+      chip.innerHTML = `
+        <p class="stat-chip-rotulo">${c.rotulo}</p>
+        <p class="stat-chip-valor">${c.valor}</p>
+        ${c.sub ? `<p class="stat-chip-sub">${c.sub}</p>` : ""}
+      `;
+      estatisticasResultado.appendChild(chip);
+    });
+  }
+
+  // ----- grade de cards -----
+  if (gradeResultado) {
+    gradeResultado.innerHTML = "";
+    resultados.forEach((r, i) => {
+      const card = document.createElement("article");
+      card.className = `resultado-card ${r.status !== "ok" ? "card-erro" : ""}`;
+      card.style.animationDelay = `${Math.min(i * 0.05, 0.5)}s`;
+
+      if (r.status === "ok") {
+        const original = imagensAtuais[i];
+        const modo = modosRemocaoUltimaConversao[r.nome];
+        const urlResultado = r.dados ? `data:${r.mime};base64,${r.dados}` : "";
+        const tamanhoFinal = r.dados ? formatarTamanho(tamanhoBase64EmBytes(r.dados)) : "—";
+        const avisoHtml = r.aviso ? `<span class="resultado-aviso">${ICONES.alerta}${r.aviso}</span>` : "";
+
+        card.innerHTML = `
+          <div class="resultado-thumb-caixa"></div>
+          <div class="resultado-info">
+            <p class="resultado-nome">${r.salvo_como}</p>
+            <div class="resultado-meta-linha">
+              <span class="resultado-tag">${r.dimensoes}</span>
+              <span class="resultado-tag">${tamanhoFinal}</span>
+            </div>
+            <div class="resultado-rodape">
+              <span class="resultado-status-ok">${ICONES.check}Concluída</span>
+              <span class="resultado-acoes"></span>
+            </div>
+          </div>
+        `;
+        if (avisoHtml) card.querySelector(".resultado-info").insertAdjacentHTML("beforeend", avisoHtml);
+
+        // thumbnail: comparador antes/depois quando temos a imagem original
+        // correspondente (mostra especialmente bem a remoção de fundo);
+        // caso contrário, cai para uma miniatura simples do resultado.
+        const caixaThumb = card.querySelector(".resultado-thumb-caixa");
+        if (original && urlResultado) {
+          caixaThumb.appendChild(criarComparadorAntesDepois(original.urlMiniatura, urlResultado, r.salvo_como));
+        } else if (urlResultado) {
+          caixaThumb.innerHTML = `<img src="${urlResultado}" alt="${r.salvo_como}" loading="lazy">`;
+        }
+
+        // ações: baixar individualmente + editar máscara (modo manual)
+        const acoes = card.querySelector(".resultado-acoes");
+        if (r.dados && modo !== "manual") {
+          const btnBaixar = document.createElement("button");
+          btnBaixar.type = "button";
+          btnBaixar.className = "btn-baixar-card";
+          btnBaixar.title = "Baixar esta imagem";
+          btnBaixar.setAttribute("aria-label", "Baixar esta imagem");
+          btnBaixar.innerHTML = ICONES.download;
+          btnBaixar.addEventListener("click", () => {
+            const blob = base64ParaBlob(r.dados, r.mime);
+            baixarBlob(blob, r.salvo_como);
+          });
+          acoes.appendChild(btnBaixar);
+        }
+        if (modo === "manual" && r.dados) {
+          const btnEditar = document.createElement("button");
+          btnEditar.type = "button";
+          btnEditar.className = "botao-secundario btn-editar-mascara";
+          btnEditar.textContent = "Editar máscara";
+          btnEditar.addEventListener("click", () => {
+            abrirEditorMascara({ dadosBase64: r.dados, mime: r.mime, nomeArquivo: r.salvo_como });
+          });
+          acoes.appendChild(btnEditar);
+        }
+      } else {
+        card.innerHTML = `
+          <div class="resultado-info">
+            <p class="resultado-nome">${r.nome}</p>
+            <div class="resultado-rodape">
+              <span class="resultado-status-erro">${ICONES.x}Erro</span>
+            </div>
+          </div>
+          ${r.mensagem ? `<p class="resultado-mensagem-erro">${r.mensagem}</p>` : ""}
+        `;
+      }
+
+      gradeResultado.appendChild(card);
+    });
+  }
 
   painelResultado.scrollIntoView({ behavior: "smooth" });
   if (sucesso > 0) {

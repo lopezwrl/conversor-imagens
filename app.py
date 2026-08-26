@@ -1,10 +1,12 @@
 import base64
 import io
 import json
+import logging
 import os
 import re
 import shutil
 import tempfile
+import time
 import zipfile
 
 from flask import Flask, Response, jsonify, render_template, request, stream_with_context
@@ -13,6 +15,12 @@ from PIL import Image
 from background_remover import ErroRemocaoFundo, MODOS_VALIDOS, remover_fundo_avancado
 
 app = Flask(__name__)
+
+# Logs simples de auditoria do lote — aparecem no painel de logs do Render.
+# Não registram conteúdo de imagem nem dados sensíveis, só contagens e nomes
+# de arquivo, o suficiente pra descobrir em qual etapa um lote travou.
+logging.basicConfig(level=logging.INFO, format="[revela] %(message)s")
+logger = logging.getLogger("revela")
 
 # Limite generoso para lotes grandes, mas evita uploads sem controle.
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024  # 300 MB
@@ -270,6 +278,7 @@ def index():
 @app.route("/api/converter-lote", methods=["POST"])
 def api_converter_lote():
     arquivos = request.files.getlist("arquivos")
+    logger.info("Arquivos recebidos: %d", len(arquivos))
     if not arquivos:
         return jsonify({"erro": "Nenhum arquivo enviado."}), 400
 
@@ -297,13 +306,22 @@ def api_converter_lote():
 
     def gerar():
         total = len(itens)
+        logger.info("Iniciando processamento: %d", total)
+        sucessos = 0
+        falhas = 0
         nomes_usados = set()
         buffer_zip = io.BytesIO()
         zf = zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) if usar_zip else None
 
         try:
             for indice, (nome_original, caminho) in enumerate(itens, start=1):
-                cfg = config.get(nome_original, {}) or {}
+                # Chave pela ordem de envio, não pelo nome original: dois
+                # arquivos com o mesmo nome (comum em fotos de câmera/pastas
+                # diferentes, ex. duas "IMG_0001.jpg") não podem dividir a
+                # mesma configuração por colisão de chave.
+                cfg = config.get(str(indice - 1)) or config.get(nome_original) or {}
+                logger.info("Processando (%d/%d): %s", indice, total, nome_original)
+                inicio_item = time.monotonic()
 
                 try:
                     if not extensao_valida(nome_original):
@@ -346,13 +364,29 @@ def api_converter_lote():
 
                     if usar_zip:
                         zf.writestr(nome_final, dados)
-                    else:
-                        evento_resultado["dados"] = base64.b64encode(dados).decode("ascii")
-                        evento_resultado["mime"] = MIME_POR_FORMATO.get(formato, "application/octet-stream")
+                    # Os bytes individuais SEMPRE vão junto no evento (mesmo em
+                    # modo ZIP): o ZIP só é fechado no final do lote inteiro, e
+                    # se o processamento for interrompido antes disso (ex.:
+                    # timeout numa imagem mais pesada), o front-end ainda
+                    # consegue entregar ao usuário tudo que já havia terminado
+                    # em vez de perder o lote inteiro por causa do ZIP que
+                    # nunca chegou a ser fechado.
+                    evento_resultado["dados"] = base64.b64encode(dados).decode("ascii")
+                    evento_resultado["mime"] = MIME_POR_FORMATO.get(formato, "application/octet-stream")
 
                     yield json.dumps(evento_resultado, ensure_ascii=True) + "\n"
+                    sucessos += 1
+                    logger.info(
+                        "Concluído (%d/%d): %s em %.1fs",
+                        indice, total, nome_original, time.monotonic() - inicio_item,
+                    )
 
                 except Exception as exc:
+                    falhas += 1
+                    logger.info(
+                        "Erro (%d/%d): %s após %.1fs — %s",
+                        indice, total, nome_original, time.monotonic() - inicio_item, exc,
+                    )
                     yield json.dumps({
                         "tipo": "resultado",
                         "nome": nome_original,
@@ -366,7 +400,13 @@ def api_converter_lote():
                     except OSError:
                         pass
 
+            logger.info(
+                "Processamento concluído: %d — Sucessos: %d — Falhas: %d",
+                total, sucessos, falhas,
+            )
+
             if usar_zip:
+                logger.info("Criando ZIP com %d arquivo(s)", len(nomes_usados))
                 zf.close()
                 buffer_zip.seek(0)
                 zip_base64 = base64.b64encode(buffer_zip.read()).decode("ascii")
@@ -380,7 +420,13 @@ def api_converter_lote():
         finally:
             shutil.rmtree(pasta_temp, ignore_errors=True)
 
-    return Response(stream_with_context(gerar()), mimetype="application/x-ndjson")
+    resposta = Response(stream_with_context(gerar()), mimetype="application/x-ndjson")
+    # Evita que um proxy reverso na frente do servidor (comum em PaaS como o
+    # Render) armazene a resposta em buffer inteira antes de repassar — sem
+    # isso, o cliente só veria progresso quando o proxy decidisse liberar o
+    # buffer (ou nunca, se isso estourar algum timeout do proxy antes).
+    resposta.headers["X-Accel-Buffering"] = "no"
+    return resposta
 
 
 if __name__ == "__main__":

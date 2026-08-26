@@ -163,6 +163,13 @@
         <span class="etapa-ponto" data-etapa="convertendo">Converter</span>
       </div>
     </div>
+    <div class="fila-processamento" id="fila-processamento" hidden>
+      <div class="fila-cabecalho">
+        <span class="fila-titulo">Processamento</span>
+        <span class="fila-contador" id="fila-contador"></span>
+      </div>
+      <ul class="fila-lista" id="fila-lista"></ul>
+    </div>
   </section>
 
   <section class="painel-resultado" id="painel-resultado" hidden>
@@ -170,7 +177,8 @@
       <h2>Concluído</h2>
       <p id="resumo-resultado"></p>
     </div>
-    <ul id="lista-resultado"></ul>
+    <div class="estatisticas-resultado" id="estatisticas-resultado"></div>
+    <div class="grade-resultado" id="grade-resultado"></div>
     <button id="btn-nova-sessao" class="botao-primario" style="margin-top: 2rem; width: 100%;">
       Processar mais imagens
     </button>
