@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Revela -Conversor de Imagens</title>
+<title>Revela - Conversor & Otimizador Inteligente de Imagens</title>
+<meta name="description" content="Converta, redimensione e renomeie imagens em lote com alta performance e suporte a WEBP, PNG, JPEG, GIF e mais.">
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon/favicon.svg') }}">
 <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
@@ -16,65 +17,167 @@
 <body>
 
 <div class="background-decoration"></div>
+<canvas id="canvas-confetti" class="canvas-confetti"></canvas>
 
 <header class="topo">
   <div class="header-content">
     <div class="header-left">
       <div class="logo-area">
-        <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
-          <rect x="4" y="4" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-          <rect x="18" y="4" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-          <rect x="4" y="18" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-          <rect x="18" y="18" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-        </svg>
-        <h1 class="text-shimmer">Revela</h1>
+        <div class="logo-badge">
+          <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+            <rect x="4" y="4" width="10" height="10" rx="3" stroke="currentColor" stroke-width="2.2"/>
+            <rect x="18" y="4" width="10" height="10" rx="3" stroke="currentColor" stroke-width="2.2"/>
+            <rect x="4" y="18" width="10" height="10" rx="3" stroke="currentColor" stroke-width="2.2"/>
+            <rect x="18" y="18" width="10" height="10" rx="3" stroke="currentColor" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-shimmer">Revela</h1>
+          <span class="badge-versao">v2.0 Pro • Turbo Multithread</span>
+        </div>
       </div>
-      <p class="subtitulo">Transforme e renomeie suas imagens de forma inteligente</p>
+      <p class="subtitulo">Transforme, redimensione e renomeie suas imagens em lote com máxima velocidade</p>
     </div>
-    <button id="toggle-tema" class="toggle-tema" title="Alternar tema">
-      <svg class="icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="5"></circle>
-        <line x1="12" y1="1" x2="12" y2="3"></line>
-        <line x1="12" y1="21" x2="12" y2="23"></line>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-        <line x1="1" y1="12" x2="3" y2="12"></line>
-        <line x1="21" y1="12" x2="23" y2="12"></line>
-        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-      </svg>
-      <svg class="icon-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-      </svg>
-    </button>
+    
+    <div class="header-actions">
+      <button id="toggle-tema" class="toggle-tema" title="Alternar tema claro/escuro" aria-label="Alternar tema">
+        <svg class="icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="icon-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+    </div>
   </div>
 </header>
 
 <main>
   <section class="painel-entrada">
     <div class="zona-arraste" id="zona-arraste" tabindex="0">
-      <div class="upload-icon">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
+      <div class="upload-icon-wrapper">
+        <div class="upload-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
       </div>
+      
       <div class="upload-text">
-        <p class="upload-title">Solte aqui ou clique para adicionar</p>
-        <p class="upload-subtitle">Fotos, pastas ou múltiplos arquivos</p>
+        <p class="upload-title">Arraste e solte suas imagens aqui</p>
+        <p class="upload-subtitle">Formatos aceitos: JPG, PNG, WEBP, GIF, BMP, TIFF</p>
       </div>
+
+      <div class="upload-botoes-atalho">
+        <button type="button" class="btn-atalho" id="btn-atalho-fotos">
+          <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Selecionar Fotos
+        </button>
+        <button type="button" class="btn-atalho" id="btn-atalho-pasta">
+          <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Selecionar Pasta
+        </button>
+      </div>
+
       <span class="aviso-navegador" id="aviso-navegador" hidden>
-        ⚠️ Navegador compatível: Chrome, Edge, Brave
+        <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Para envio de pastas completas, utilize navegadores como Chrome, Edge ou Brave.
       </span>
     </div>
-    <p class="dica" id="mensagem-erro"></p>
+    <p class="dica dica-erro" id="mensagem-erro"></p>
   </section>
 
   <section class="painel-lote" id="painel-lote" hidden>
-    <div class="section-header">
-      <h2>Ajustes em Lote</h2>
-      <p>Configure parâmetros e renomeação para todas as imagens instantaneamente</p>
+    <div class="section-header-flex">
+      <div class="section-header-info">
+        <h2>Ajustes em Lote</h2>
+        <p>Configure parâmetros simultâneos ou aplique presets inteligentes</p>
+      </div>
+      <div class="badge-status-lote">
+        <span id="contador-imagens-chip" class="chip-contador">0 imagens • 0 KB</span>
+        <button type="button" id="btn-limpar-tudo-topo" class="btn-link-perigo" title="Remover todas as imagens">
+          Limpar lista
+        </button>
+      </div>
+    </div>
+
+    <!-- Presets Rápidos -->
+    <div class="presets-container">
+      <div class="presets-header">
+        <span class="presets-icone">
+          <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </span>
+        <span class="presets-label">Presets Prontos:</span>
+      </div>
+      <div class="presets-grade">
+        <button type="button" class="btn-preset" data-preset="web" title="Converter em WEBP a 80% de qualidade">
+          <span class="preset-tag">Rápido</span>
+          <strong>
+            <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Web Otimizado
+          </strong>
+          <small>WEBP • 80%</small>
+        </button>
+        <button type="button" class="btn-preset" data-preset="social" title="Redimensionar para quadrado de alta resolução">
+          <span class="preset-tag">Social</span>
+          <strong>
+            <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+            Instagram Post
+          </strong>
+          <small>1080×1080 • JPEG</small>
+        </button>
+        <button type="button" class="btn-preset" data-preset="reduzir50" title="Reduzir as dimensões em 50%">
+          <span class="preset-tag">Econômico</span>
+          <strong>
+            <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+              <polyline points="17 18 23 18 23 12"/>
+            </svg>
+            Reduzir 50%
+          </strong>
+          <small>Metade do tamanho</small>
+        </button>
+        <button type="button" class="btn-preset" data-preset="qualidade" title="Converter em PNG com máxima nitidez">
+          <span class="preset-tag">Lossless</span>
+          <strong>
+            <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h12l4 6-10 13L2 9z"/>
+              <path d="M11 3L8 9l4 13 4-13-3-6"/>
+              <path d="M2 9h20"/>
+            </svg>
+            Alta Fidelidade
+          </strong>
+          <small>PNG • Sem perda</small>
+        </button>
+      </div>
     </div>
 
     <!-- Renomeação em Lote Inteligente -->
@@ -82,7 +185,7 @@
       <div class="campo campo-destaque">
         <label for="lote-nome-base">Renomear em Lote (Prefixo)</label>
         <div class="input-com-sufixo">
-          <input type="text" id="lote-nome-base" placeholder="Ex: viagem_2026">
+          <input type="text" id="lote-nome-base" placeholder="Ex: produto_final, viagem_2026">
           <span class="dica-sufixo">_1, _2, _3...</span>
         </div>
       </div>
@@ -90,78 +193,129 @@
     
     <div class="controles-lote">
       <div class="campo">
-        <label>Formato</label>
+        <label for="lote-formato">Formato de Saída</label>
         <select id="lote-formato">
           <option value="">Manter original</option>
-          <option value="PNG">PNG</option>
-          <option value="JPEG">JPEG</option>
-          <option value="WEBP">WEBP</option>
+          <option value="WEBP">WEBP (Mais leve)</option>
+          <option value="PNG">PNG (Transparência)</option>
+          <option value="JPEG">JPEG (Padrão)</option>
           <option value="BMP">BMP</option>
           <option value="GIF">GIF</option>
           <option value="TIFF">TIFF</option>
         </select>
       </div>
       <div class="campo">
-        <label>Largura (px)</label>
-        <input type="number" id="lote-largura" min="1" placeholder="Padrão">
+        <label for="lote-largura">Largura (px)</label>
+        <input type="number" id="lote-largura" min="1" placeholder="Original">
       </div>
       <div class="campo">
-        <label>Altura (px)</label>
-        <input type="number" id="lote-altura" min="1" placeholder="Padrão">
+        <label for="lote-altura">Altura (px)</label>
+        <input type="number" id="lote-altura" min="1" placeholder="Original">
       </div>
       <div class="campo">
-        <label>Qualidade</label>
+        <label for="lote-qualidade">Qualidade (1-100)</label>
         <input type="number" id="lote-qualidade" min="1" max="100" value="90">
       </div>
       <div class="campo">
-        <label>Manter proporção</label>
+        <label for="lote-proporcao">Proporção</label>
         <select id="lote-proporcao">
           <option value="">Não alterar</option>
-          <option value="on">Ativar em todas</option>
-          <option value="off">Desativar em todas</option>
+          <option value="on">Fixar proporção (On)</option>
+          <option value="off">Livre / Distorcer (Off)</option>
         </select>
       </div>
-      <button id="btn-aplicar-lote" class="botao-secundario">Aplicar Dimensões</button>
+      <div class="campo campo-botao">
+        <button id="btn-aplicar-lote" class="botao-secundario destaque">
+          <span class="btn-icone">
+            <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
+          Aplicar em Todas
+        </button>
+      </div>
     </div>
 
-    <div class="checkbox-group">
-      <input type="checkbox" id="usar-zip" checked>
-      <label for="usar-zip">Baixar como arquivo ZIP comprimido</label>
+    <div class="lote-opcoes-extras">
+      <div class="checkbox-group">
+        <input type="checkbox" id="usar-zip" checked>
+        <label for="usar-zip">Empacotar resultados em arquivo ZIP comprimido</label>
+      </div>
     </div>
   </section>
 
-  <section class="tira-filme" id="tira-filme"></section>
+  <!-- Lista de cards / Tira de filme -->
+  <section class="tira-filme-container" id="secao-tira-filme" hidden>
+    <div class="tira-header">
+      <h3 class="tira-titulo">Imagens Prontas para Processamento</h3>
+      <span class="tira-dica">Edite individualmente ou clique na lupa para ampliar</span>
+    </div>
+    <div class="tira-filme" id="tira-filme"></div>
+  </section>
 
   <section class="painel-acao" id="painel-acao" hidden>
     <div class="acao-container">
       <button id="btn-converter" class="botao-primario grande">
-        <span class="btn-text">Revelar</span>
-        <span class="btn-icon">→</span>
+        <span class="btn-text">Revelar Imagens</span>
+        <span class="btn-icon">
+          <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </span>
       </button>
-      <button id="btn-adicionar-mais" class="btn-adicionar-mais" title="Adicionar mais imagens">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button id="btn-adicionar-mais" class="btn-adicionar-mais" title="Adicionar mais imagens" aria-label="Adicionar mais imagens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
       </button>
     </div>
-    <p class="dica" id="mensagem-destino"></p>
+    <p class="dica dica-info" id="mensagem-destino"></p>
     <div class="barra-progresso-container" id="barra-progresso-container" hidden>
       <div class="barra-progresso"></div>
+      <span class="progresso-legenda" id="progresso-legenda">Processando imagens com alta performance...</span>
     </div>
   </section>
 
   <section class="painel-resultado" id="painel-resultado" hidden>
-    <div class="section-header">
-      <h2>Concluído</h2>
-      <p id="resumo-resultado"></p>
+    <div class="resultado-banner">
+      <div class="resultado-icone-sucesso">
+        <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div>
+        <h2>Conversão Concluída!</h2>
+        <p id="resumo-resultado"></p>
+      </div>
     </div>
-    <ul id="lista-resultado"></ul>
-    <button id="btn-nova-sessao" class="botao-primario" style="margin-top: 2rem; width: 100%;">
-      Processar mais imagens
-    </button>
+    <ul id="lista-resultado" class="lista-resultado"></ul>
+    <div class="resultado-acoes">
+      <button id="btn-nova-sessao" class="botao-primario" style="width: 100%;">
+        Processar Nova Fila de Imagens
+      </button>
+    </div>
   </section>
 </main>
+
+<!-- MODAL LIGHTBOX / ZOOM -->
+<div id="modal-lightbox" class="modal-lightbox" hidden>
+  <div class="lightbox-backdrop" id="lightbox-backdrop"></div>
+  <div class="lightbox-conteudo">
+    <button class="lightbox-fechar" id="lightbox-fechar" aria-label="Fechar pré-visualização">&times;</button>
+    <div class="lightbox-imagem-wrapper">
+      <img id="lightbox-img" src="" alt="Visualização ampliada">
+    </div>
+    <div class="lightbox-info">
+      <span id="lightbox-nome" class="lightbox-nome"></span>
+      <span id="lightbox-meta" class="lightbox-meta"></span>
+    </div>
+  </div>
+</div>
+
+<!-- CONTAINER DE TOASTS FLUTUANTES -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
 
 <!-- INPUTS OCULTOS -->
 <input type="file" id="input-fotos" accept="image/*" multiple hidden>
