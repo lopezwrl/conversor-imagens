@@ -1,0 +1,17 @@
+{
+  "name": "revela",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Revela — Estúdio rápido e sem barreiras para transformação de imagens e documentos em lote",
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "start": "npm --prefix server run start",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

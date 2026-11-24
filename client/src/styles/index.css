@@ -1,0 +1,201 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    transition: background-color 420ms var(--ease-spring), color 320ms ease;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Fundo atmosférico dinâmico por tema */
+.revela-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 55% at 12% 8%, var(--mesh-a), transparent 70%),
+    radial-gradient(50% 45% at 88% 14%, var(--mesh-b), transparent 68%),
+    radial-gradient(45% 45% at 50% 95%, var(--mesh-c), transparent 70%);
+  transition: background 500ms ease;
+}
+
+/* Granulação sutil fotográfica/editorial */
+.revela-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.032;
+  background-image: radial-gradient(currentColor 0.65px, transparent 0.65px);
+  background-size: 16px 16px;
+}
+
+/* Shimmer editorial no título */
+.revela-shimmer {
+  background: linear-gradient(
+    105deg,
+    var(--text-primary) 15%,
+    var(--accent-text) 48%,
+    var(--text-primary) 82%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: revelaShimmer 5.5s linear infinite;
+}
+
+@keyframes revelaShimmer {
+  0% { background-position: 220% center; }
+  100% { background-position: -220% center; }
+}
+
+/* Border Beam rotativo (21st.dev / Skiper style) */
+.revela-beam-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.revela-beam-wrap::before {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -60%;
+  width: 220%;
+  height: 220%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 275deg,
+    var(--accent) 330deg,
+    var(--brand-glow) 360deg
+  );
+  animation: revelaRotateBeam 4.2s linear infinite;
+  opacity: 0;
+  transition: opacity 280ms ease;
+  pointer-events: none;
+}
+
+.revela-beam-wrap:hover::before,
+.revela-beam-wrap[data-active="true"]::before {
+  opacity: 1;
+}
+
+.revela-beam-inner {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-elevated);
+}
+
+@keyframes revelaRotateBeam {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Padrão xadrez de transparência */
+.checkerboard {
+  background-image:
+    linear-gradient(45deg, var(--border) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--border) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--border) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--border) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  background-color: var(--bg-surface);
+}
+
+/* Barra de progresso com shimmer deslizante */
+.progress-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(253, 226, 185, 0.65), transparent);
+  background-size: 60% 100%;
+  animation: progressSweep 1.3s linear infinite;
+}
+
+@keyframes progressSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Inputs consistentes com tokens */
+.revela-input,
+.revela-select {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.58rem 0.78rem;
+  font-size: 0.875rem;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.revela-input:focus,
+.revela-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.revela-select option {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* Scrollbar elegante */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+/* Respeito estrito a prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
