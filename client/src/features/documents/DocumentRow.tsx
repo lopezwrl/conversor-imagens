@@ -1,18 +1,18 @@
-import React from "react";
-import { ArrowDown, ArrowUp, GripVertical, RotateCcw, X } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import type { DocOutputFormat, DocRecord } from "../../types/document";
 import type { BatchRenameRule } from "../../types/shared";
 import { DOC_FORMAT_EXT, getTargetDocFormats } from "../../lib/formats";
 import { formatBytes, resolveOutputBaseName } from "../../lib/naming";
-import { Input, Select } from "../../components/ui/Field";
+import { Input, Label, Select } from "../../components/ui/Field";
 
 interface DocumentRowProps {
   item: DocRecord;
   index: number;
   total: number;
   mergePdfMode: boolean;
-  mergedPdfName: string;
   renameRule: BatchRenameRule;
+  onSelectFormat: (id: string, fmt: DocOutputFormat | null) => void;
   onUpdate: (id: string, patch: Partial<DocRecord>) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
   onRemove: (id: string) => void;
@@ -22,7 +22,7 @@ interface DocumentRowProps {
 
 const SHORT_FORMAT_LABEL: Record<DocOutputFormat, string> = {
   PDF: "PDF",
-  PDF_SPLIT: "Dividir PDF",
+  PDF_SPLIT: "Dividir",
   DOCX: "DOCX",
   HTML: "HTML",
   MD: "MD",
@@ -32,69 +32,125 @@ const SHORT_FORMAT_LABEL: Record<DocOutputFormat, string> = {
   JSON: "JSON",
 };
 
-/**
- * Ficha de Documento em Creme (#FDE2B9) com cabeçalho Petróleo (#0B3B46)
- * e botões de formato ativos em Bordô (#60011D) com borda Dourada (#BC9200).
- * Alto contraste com as 4 cores!
- */
 export function DocumentRow({
   item,
   index,
   total,
   mergePdfMode,
-  mergedPdfName,
   renameRule,
+  onSelectFormat,
   onUpdate,
   onMove,
   onRemove,
   onDragStartIndex,
   onDropIndex,
 }: DocumentRowProps) {
+  const [expanded, setExpanded] = useState(false);
+
   const targets = getTargetDocFormats(item.extensao);
   const outBase = resolveOutputBaseName(item.nomeBase, item.nomePersonalizado, index, renameRule);
-  const outLabel = mergePdfMode
-    ? `Parte ${String(index + 1).padStart(2, "0")} → ${mergedPdfName || "unificado"}.pdf`
-    : `${outBase}.${DOC_FORMAT_EXT[item.formato]}`;
-
+  const outName = `${outBase}.${DOC_FORMAT_EXT[item.formato]}`;
   const isPdfInput = item.extensao === "pdf";
+  const hasException = !mergePdfMode && item.formatoIndividual !== null;
+
+  const statusDetails: string[] = [];
+  if (item.intervaloPaginas) statusDetails.push(`Páginas ${item.intervaloPaginas}`);
+  if (item.rotacao) statusDetails.push(`${item.rotacao}°`);
+  const statusText = statusDetails.length > 0 ? statusDetails.join(" · ") : "Padrão";
 
   return (
-    <article
+    <div
       draggable={total > 1}
       onDragStart={() => onDragStartIndex(index)}
       onDragOver={(e: React.DragEvent) => e.preventDefault()}
       onDrop={() => onDropIndex(index)}
-      className="flex flex-col gap-3 rounded-xl border-2 border-[#BC9200] bg-[#FFF3DE] p-3.5 text-[#0B3B46] shadow-md transition-all hover:border-[#60011D]"
+      className="rounded-[6px] bg-[#F4D09A]/55 px-3.5 py-2.5 text-[#06252C]"
     >
-      {/* Linha Superior: Índice, Tipo, Nome Original -> Saída e Ordem */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      {/* Ordem: número, nome original + saída, formato de saída, status, botão de remover */}
+      <div className="flex min-h-[44px] flex-wrap items-center gap-3">
+        {/* 1. Número (com alça de arraste quando houver mais de 1) */}
+        <div className="flex items-center gap-1.5">
           {total > 1 && (
             <span
               title="Arraste para reordenar"
-              className="cursor-grab text-[#0B3B46] hover:text-[#60011D]"
+              className="cursor-grab text-[#0B3B46] hover:text-[#06252C]"
             >
               <GripVertical className="h-4 w-4" />
             </span>
           )}
-          <span className="rounded-md bg-[#0B3B46] px-2 py-1 font-mono text-xs font-bold text-[#FDE2B9]">
-            #{String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="rounded-md border border-[#BC9200] bg-[#60011D] px-2 py-0.5 font-mono text-[11px] font-bold uppercase text-[#FDE2B9]">
-            {item.extensao || "doc"}
-          </span>
-
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-mono text-xs font-bold text-[#0B3B46]" title={item.nome}>
-              {item.nome}{" "}
-              <span className="font-normal opacity-75">({formatBytes(item.tamanhoBytes)})</span>
-            </p>
-            <p className="truncate font-mono text-xs font-bold text-[#60011D]">
-              Saída: {outLabel}
-            </p>
-          </div>
+          <span className="w-5 text-[13px] font-semibold text-[#0B3B46]">{index + 1}</span>
         </div>
 
+        {/* 2. Nome original em destaque + linha inferior com saída e tamanho */}
+        <div className="min-w-[180px] flex-1">
+          <p className="truncate font-mono text-[13px] font-semibold text-[#06252C]">
+            {item.nome}
+          </p>
+          <p className="mt-0.5 text-[13px] text-[#0B3B46]">
+            {mergePdfMode ? (
+              <span>
+                {index + 1} de {total} · {formatBytes(item.tamanhoBytes)}
+              </span>
+            ) : (
+              <>
+                <span className="font-mono font-medium">→ {outName}</span>
+                <span> · {formatBytes(item.tamanhoBytes)}</span>
+              </>
+            )}
+          </p>
+        </div>
+
+        {/* 3. Formato de saída (com exceção explícita e visível quando diferente do lote) */}
+        {!mergePdfMode && (
+          <div className="flex flex-wrap items-center gap-2">
+            {hasException && (
+              <button
+                type="button"
+                onClick={() => onSelectFormat(item.id, null)}
+                title="Voltar ao formato do modo escolhido"
+                className="rounded-[6px] bg-[#60011D] px-2 py-0.5 text-[13px] font-medium text-[#FDE2B9] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
+              >
+                Exceção · seguir lote
+              </button>
+            )}
+            <div className="inline-flex flex-wrap overflow-hidden rounded-[6px] bg-[#FDE2B9]">
+              {targets.map((fmt) => {
+                const active = item.formato === fmt;
+                return (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => onSelectFormat(item.id, fmt as DocOutputFormat)}
+                    className={`px-2.5 py-1 font-mono text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer ${
+                      active
+                        ? "bg-[#0B3B46] font-semibold text-[#FDE2B9] ring-1 ring-inset ring-[#BC9200]"
+                        : "text-[#06252C] hover:bg-[#F4D09A]"
+                    }`}
+                  >
+                    {SHORT_FORMAT_LABEL[fmt]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Status + ação clicável "Opções ›" */}
+        <div className="flex items-center gap-3">
+          <span className="hidden text-[13px] text-[#06252C] sm:inline">{statusText}</span>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[13px] font-semibold text-[#0B3B46] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
+          >
+            <span>{expanded ? "Fechar opções" : "Opções"}</span>
+            <span aria-hidden="true" className="text-sm leading-none">
+              ›
+            </span>
+          </button>
+        </div>
+
+        {/* 5. Ordem e botão de remover */}
         <div className="flex items-center gap-1">
           {total > 1 && (
             <>
@@ -103,72 +159,76 @@ export function DocumentRow({
                 disabled={index === 0}
                 onClick={() => onMove(index, index - 1)}
                 aria-label="Subir"
-                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#0B3B46]/30 bg-[#FDE2B9] text-[#0B3B46] hover:bg-[#0B3B46] hover:text-[#FDE2B9] disabled:opacity-30 cursor-pointer"
+                className="rounded-[6px] p-1 text-[#0B3B46] hover:bg-[#FDE2B9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] disabled:opacity-30 cursor-pointer"
               >
-                <ArrowUp className="h-3.5 w-3.5" />
+                <ArrowUp className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 disabled={index === total - 1}
                 onClick={() => onMove(index, index + 1)}
                 aria-label="Descer"
-                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#0B3B46]/30 bg-[#FDE2B9] text-[#0B3B46] hover:bg-[#0B3B46] hover:text-[#FDE2B9] disabled:opacity-30 cursor-pointer"
+                className="rounded-[6px] p-1 text-[#0B3B46] hover:bg-[#FDE2B9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] disabled:opacity-30 cursor-pointer"
               >
-                <ArrowDown className="h-3.5 w-3.5" />
+                <ArrowDown className="h-4 w-4" />
               </button>
             </>
           )}
           <button
             type="button"
             onClick={() => onRemove(item.id)}
-            aria-label="Remover"
-            className="flex h-7 w-7 items-center justify-center rounded-md bg-[#60011D] text-[#FDE2B9] hover:bg-[#820429] cursor-pointer"
+            aria-label="Remover da fila"
+            className="rounded-[6px] p-1 text-[#0B3B46] hover:text-[#60011D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Linha Inferior: Pílulas de Formato Clicáveis + Nome Individual */}
-      {!mergePdfMode && (
-        <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[#BC9200]/40 pt-2.5">
-          {/* Pílulas de formato de destino */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 font-mono text-[10px] font-bold uppercase text-[#0B3B46]">
-              Converter em:
-            </span>
-            {targets.map((fmt) => {
-              const active = item.formato === fmt;
-              return (
-                <button
-                  key={fmt}
-                  type="button"
-                  onClick={() => onUpdate(item.id, { formato: fmt as DocOutputFormat })}
-                  className={`rounded-lg border-2 px-3 py-1 font-mono text-xs font-bold transition-all cursor-pointer ${
-                    active
-                      ? "border-[#BC9200] bg-[#60011D] text-[#FDE2B9] shadow-sm"
-                      : "border-[#0B3B46]/25 bg-[#FDE2B9] text-[#0B3B46] hover:border-[#60011D]"
-                  }`}
-                >
-                  {SHORT_FORMAT_LABEL[fmt]}
-                </button>
-              );
-            })}
-          </div>
+      {expanded && (
+        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-[#0B3B46]/15 pt-3 sm:grid-cols-3">
+          {!mergePdfMode && (
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <Label className="mb-0">Nome do arquivo</Label>
+                {item.nomePersonalizado !== null && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(item.id, { nomePersonalizado: null })}
+                    className="rounded-[6px] px-1 text-[13px] font-semibold text-[#60011D] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
+                  >
+                    Usar lote
+                  </button>
+                )}
+              </div>
+              <Input
+                type="text"
+                className="font-mono"
+                value={item.nomePersonalizado ?? ""}
+                placeholder={outBase}
+                onChange={(e) =>
+                  onUpdate(item.id, {
+                    nomePersonalizado: e.target.value === "" ? null : e.target.value,
+                  })
+                }
+              />
+            </div>
+          )}
 
-          {/* Controles extras só quando necessários (PDF páginas/rotação + nome manual) */}
-          <div className="flex flex-wrap items-center gap-2">
-            {isPdfInput && (item.formato === "PDF" || item.formato === "PDF_SPLIT") && (
-              <>
+          {isPdfInput && (
+            <>
+              <div>
+                <Label>Páginas</Label>
                 <Input
                   type="text"
-                  placeholder="Págs (ex: 1-3)"
-                  className="w-28 font-mono"
+                  placeholder="Todas (ex: 1-3, 5)"
                   value={item.intervaloPaginas}
                   onChange={(e) => onUpdate(item.id, { intervaloPaginas: e.target.value })}
                 />
+              </div>
+              <div>
+                <Label>Rotação</Label>
                 <Select
-                  className="w-20 font-mono"
                   value={item.rotacao}
                   onChange={(e) =>
                     onUpdate(item.id, { rotacao: Number(e.target.value) as 0 | 90 | 180 | 270 })
@@ -179,36 +239,60 @@ export function DocumentRow({
                   <option value={180}>180°</option>
                   <option value={270}>270°</option>
                 </Select>
-              </>
-            )}
+              </div>
+            </>
+          )}
 
-            <div className="relative w-44">
-              <Input
-                type="text"
-                className="font-mono"
-                value={item.nomePersonalizado ?? ""}
-                placeholder={outBase}
-                title="Editar nome deste arquivo"
-                onChange={(e) =>
-                  onUpdate(item.id, {
-                    nomePersonalizado: e.target.value === "" ? null : e.target.value,
-                  })
-                }
-              />
-              {item.nomePersonalizado !== null && (
-                <button
-                  type="button"
-                  onClick={() => onUpdate(item.id, { nomePersonalizado: null })}
-                  title="Voltar ao nome do lote"
-                  className="absolute right-2 top-2.5 text-[#60011D] cursor-pointer"
+          {!isPdfInput && (mergePdfMode || item.formato === "PDF") && (
+            <>
+              <div>
+                <Label>Tamanho da folha</Label>
+                <Select
+                  value={item.tamanhoPagina}
+                  onChange={(e) =>
+                    onUpdate(item.id, {
+                      tamanhoPagina: e.target.value as "A4" | "LETTER" | "AUTO",
+                    })
+                  }
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </button>
-              )}
+                  <option value="A4">A4</option>
+                  <option value="LETTER">Carta</option>
+                  {item.previewUrl && <option value="AUTO">Ajustar à imagem</option>}
+                </Select>
+              </div>
+              <div>
+                <Label>Orientação</Label>
+                <Select
+                  value={item.orientacao}
+                  onChange={(e) =>
+                    onUpdate(item.id, {
+                      orientacao: e.target.value as "portrait" | "landscape",
+                    })
+                  }
+                >
+                  <option value="portrait">Retrato</option>
+                  <option value="landscape">Paisagem</option>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {!mergePdfMode && item.formato === "CSV" && (
+            <div>
+              <Label>Separador CSV</Label>
+              <Select
+                value={item.delimitadorCsv}
+                onChange={(e) =>
+                  onUpdate(item.id, { delimitadorCsv: e.target.value as "," | ";" })
+                }
+              >
+                <option value=";">Ponto e vírgula (;)</option>
+                <option value=",">Vírgula (,)</option>
+              </Select>
             </div>
-          </div>
+          )}
         </div>
       )}
-    </article>
+    </div>
   );
 }

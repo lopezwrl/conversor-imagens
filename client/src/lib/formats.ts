@@ -71,16 +71,16 @@ export function inferImageFormat(ext: string): ImageOutputFormat {
 
 export function getTargetDocFormats(ext: string): DocOutputFormat[] {
   const e = ext.toLowerCase();
-  if (e === "pdf") return ["PDF", "PDF_SPLIT", "TXT", "MD", "HTML", "DOCX"];
-  if (e === "docx") return ["PDF", "HTML", "MD", "TXT"];
-  if (e === "md" || e === "markdown") return ["PDF", "DOCX", "HTML", "TXT"];
-  if (e === "html" || e === "htm") return ["PDF", "DOCX", "MD", "TXT"];
-  if (e === "txt") return ["PDF", "DOCX", "HTML", "MD"];
-  if (e === "xlsx") return ["CSV", "JSON", "PDF", "HTML", "MD"];
-  if (e === "csv") return ["XLSX", "JSON", "PDF", "HTML", "MD"];
-  if (e === "json") return ["XLSX", "CSV", "PDF", "HTML", "MD"];
+  if (e === "pdf") return ["PDF", "PDF_SPLIT", "TXT", "CSV", "JSON", "MD", "HTML", "DOCX"];
+  if (e === "docx") return ["PDF", "TXT", "CSV", "JSON", "HTML", "MD"];
+  if (e === "md" || e === "markdown") return ["PDF", "TXT", "CSV", "JSON", "DOCX", "HTML"];
+  if (e === "html" || e === "htm") return ["PDF", "TXT", "CSV", "JSON", "DOCX", "MD"];
+  if (e === "txt") return ["PDF", "TXT", "CSV", "JSON", "DOCX", "HTML", "MD"];
+  if (e === "xlsx") return ["CSV", "JSON", "PDF", "TXT", "HTML", "MD"];
+  if (e === "csv") return ["CSV", "XLSX", "JSON", "PDF", "TXT", "HTML", "MD"];
+  if (e === "json") return ["JSON", "CSV", "XLSX", "PDF", "TXT", "HTML", "MD"];
   if (["png", "jpg", "jpeg", "webp"].includes(e)) return ["PDF"];
-  return ["PDF", "TXT"];
+  return ["PDF", "TXT", "CSV", "JSON"];
 }
 
 export function getDocFormatLabel(fmt: DocOutputFormat): string {

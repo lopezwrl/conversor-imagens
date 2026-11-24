@@ -76,16 +76,16 @@ const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fen
 
 export function formatosDestinoParaExtensao(ext: string): FormatoDocSaida[] {
   const e = ext.toLowerCase();
-  if (e === "pdf") return ["PDF", "PDF_SPLIT", "TXT", "MD", "HTML", "DOCX"];
-  if (e === "docx") return ["PDF", "HTML", "MD", "TXT"];
-  if (e === "md" || e === "markdown") return ["PDF", "DOCX", "HTML", "TXT"];
-  if (e === "html" || e === "htm") return ["PDF", "DOCX", "MD", "TXT"];
-  if (e === "txt") return ["PDF", "DOCX", "HTML", "MD"];
-  if (e === "xlsx") return ["CSV", "JSON", "PDF", "HTML", "MD"];
-  if (e === "csv") return ["XLSX", "JSON", "PDF", "HTML", "MD"];
-  if (e === "json") return ["XLSX", "CSV", "PDF", "HTML", "MD"];
+  if (e === "pdf") return ["PDF", "PDF_SPLIT", "TXT", "CSV", "JSON", "MD", "HTML", "DOCX"];
+  if (e === "docx") return ["PDF", "TXT", "CSV", "JSON", "HTML", "MD"];
+  if (e === "md" || e === "markdown") return ["PDF", "TXT", "CSV", "JSON", "DOCX", "HTML"];
+  if (e === "html" || e === "htm") return ["PDF", "TXT", "CSV", "JSON", "DOCX", "MD"];
+  if (e === "txt") return ["PDF", "TXT", "CSV", "JSON", "DOCX", "HTML", "MD"];
+  if (e === "xlsx") return ["CSV", "JSON", "PDF", "TXT", "HTML", "MD"];
+  if (e === "csv") return ["CSV", "XLSX", "JSON", "PDF", "TXT", "HTML", "MD"];
+  if (e === "json") return ["JSON", "CSV", "XLSX", "PDF", "TXT", "HTML", "MD"];
   if (["png", "jpg", "jpeg", "webp"].includes(e)) return ["PDF"];
-  return ["PDF", "TXT"];
+  return ["PDF", "TXT", "CSV", "JSON"];
 }
 
 /** Interpreta strings como "1-3, 5, 7-9" em índices base 0 válidos dentro de [0, total-1]. */
@@ -695,7 +695,7 @@ export async function processarDocumento(
       return [{ dados: Buffer.from(bytes), extensao: "pdf", mime: MIME_DOC.pdf, paginas: copiadas.length }];
     }
 
-    // PDF -> TXT / MD / HTML / DOCX
+    // PDF -> TXT / MD / HTML / DOCX / CSV / JSON
     onEtapa?.("convertendo");
     const parsed = await pdfParseCore(buffer);
     const texto = (parsed.text || "").trim();
@@ -717,6 +717,18 @@ export async function processarDocumento(
       const docxBuf = await gerarDocxDeMarkdownOuTexto(titulo, texto);
       return [{ dados: docxBuf, extensao: "docx", mime: MIME_DOC.docx, paginas: parsed.numpages, aviso: avisoVazio }];
     }
+    if (destino === "CSV" || destino === "JSON") {
+      const linhas = texto
+        .split(/\r?\n/)
+        .map((l: string) => l.trim())
+        .filter(Boolean);
+      const sep = cfg.delimitador_csv || ";";
+      const rows: string[][] = [["Linha", "Conteudo"], ...linhas.map((l: string, i: number) => [String(i + 1), l])];
+      if (destino === "CSV") {
+        return [{ dados: Buffer.from(serializarCsv(rows, sep), "utf-8"), extensao: "csv", mime: MIME_DOC.csv, paginas: parsed.numpages, aviso: avisoVazio }];
+      }
+      return [{ dados: Buffer.from(tabelaParaJson(rows), "utf-8"), extensao: "json", mime: MIME_DOC.json, paginas: parsed.numpages, aviso: avisoVazio }];
+    }
   }
 
   // 3) Planilhas & Dados (XLSX / CSV / JSON)
@@ -730,13 +742,18 @@ export async function processarDocumento(
       return [{ dados: xlsxBuf, extensao: "xlsx", mime: MIME_DOC.xlsx }];
     }
     if (destino === "CSV") {
-      const sep = cfg.delimitador_csv || ",";
+      const sep = cfg.delimitador_csv || ";";
       onEtapa?.("finalizando");
       return [{ dados: Buffer.from(serializarCsv(rows, sep), "utf-8"), extensao: "csv", mime: MIME_DOC.csv }];
     }
     if (destino === "JSON") {
       onEtapa?.("finalizando");
       return [{ dados: Buffer.from(tabelaParaJson(rows), "utf-8"), extensao: "json", mime: MIME_DOC.json }];
+    }
+    if (destino === "TXT") {
+      const txtOut = rows.map((r) => r.join("\t")).join("\n");
+      onEtapa?.("finalizando");
+      return [{ dados: Buffer.from(txtOut, "utf-8"), extensao: "txt", mime: MIME_DOC.txt }];
     }
     if (destino === "HTML") {
       onEtapa?.("finalizando");
@@ -812,6 +829,19 @@ export async function processarDocumento(
   if (destino === "TXT") {
     onEtapa?.("finalizando");
     return [{ dados: Buffer.from(textoPuro, "utf-8"), extensao: "txt", mime: MIME_DOC.txt }];
+  }
+  if (destino === "CSV" || destino === "JSON") {
+    const linhas = textoPuro
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const sep = cfg.delimitador_csv || ";";
+    const rows: string[][] = [["Linha", "Conteudo"], ...linhas.map((l, i) => [String(i + 1), l])];
+    onEtapa?.("finalizando");
+    if (destino === "CSV") {
+      return [{ dados: Buffer.from(serializarCsv(rows, sep), "utf-8"), extensao: "csv", mime: MIME_DOC.csv }];
+    }
+    return [{ dados: Buffer.from(tabelaParaJson(rows), "utf-8"), extensao: "json", mime: MIME_DOC.json }];
   }
 
   throw new Error(`Conversão de .${extIn} para ${destino} não suportada.`);

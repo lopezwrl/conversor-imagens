@@ -9,6 +9,14 @@ export type DocOutputFormat =
   | "CSV"
   | "JSON";
 
+export type DocBatchMode =
+  | "all_pdf"
+  | "merge_pdf"
+  | "split_pdf"
+  | "to_txt"
+  | "to_csv"
+  | "to_json";
+
 export interface DocRecord {
   id: string;
   hash: string;
@@ -19,6 +27,7 @@ export interface DocRecord {
   tamanhoBytes: number;
   previewUrl?: string;
   formato: DocOutputFormat;
+  formatoIndividual: DocOutputFormat | null;
   rotacao: 0 | 90 | 180 | 270;
   intervaloPaginas: string;
   tamanhoPagina: "A4" | "LETTER" | "AUTO";

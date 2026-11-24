@@ -1,18 +1,40 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef } from "react";
-import type { DocRecord } from "../types/document";
+import type { DocBatchMode, DocOutputFormat, DocRecord } from "../types/document";
 import { computeFileHash, getBaseName, getExtension } from "../lib/files";
 import { DOC_ACCEPTED_EXTENSIONS, getTargetDocFormats } from "../lib/formats";
+
+export function getFormatForDocBatchMode(mode: DocBatchMode, ext?: string): DocOutputFormat {
+  if (mode === "to_csv") {
+    if (ext && ["png", "jpg", "jpeg", "webp"].includes(ext.toLowerCase())) return "PDF";
+    return "CSV";
+  }
+  if (mode === "to_json") {
+    if (ext && ["png", "jpg", "jpeg", "webp"].includes(ext.toLowerCase())) return "PDF";
+    return "JSON";
+  }
+  if (mode === "to_txt") {
+    if (ext && ["png", "jpg", "jpeg", "webp"].includes(ext.toLowerCase())) return "PDF";
+    return "TXT";
+  }
+  if (mode === "split_pdf") {
+    return !ext || ext.toLowerCase() === "pdf" ? "PDF_SPLIT" : "PDF";
+  }
+  return "PDF";
+}
 
 interface DocsState {
   items: DocRecord[];
   folderName: string;
   useZip: boolean;
+  batchMode: DocBatchMode;
 }
 
 type DocsAction =
   | { type: "ADD"; items: DocRecord[]; folderName?: string | null; forceZip?: boolean }
   | { type: "UPDATE"; id: string; patch: Partial<DocRecord> }
   | { type: "UPDATE_ALL"; updater: (item: DocRecord) => Partial<DocRecord> }
+  | { type: "SET_BATCH_MODE"; mode: DocBatchMode }
+  | { type: "SET_ROW_FORMAT"; id: string; formato: DocOutputFormat | null }
   | { type: "MOVE"; fromIndex: number; toIndex: number }
   | { type: "REMOVE"; id: string }
   | { type: "CLEAR" }
@@ -21,11 +43,62 @@ type DocsAction =
 function reducer(state: DocsState, action: DocsAction): DocsState {
   switch (action.type) {
     case "ADD": {
-      const next = [...state.items, ...action.items];
+      const normalized = action.items.map((item) => {
+        const defaultFmt = getFormatForDocBatchMode(state.batchMode, item.extensao);
+        const targets = getTargetDocFormats(item.extensao);
+        const fmt = targets.includes(defaultFmt) ? defaultFmt : targets[0];
+        return {
+          ...item,
+          formato: fmt,
+          formatoIndividual: null,
+          delimitadorCsv: state.batchMode === "to_csv" ? ";" : item.delimitadorCsv,
+        };
+      });
+      const next = [...state.items, ...normalized];
       return {
+        ...state,
         items: next,
         folderName: action.folderName || state.folderName,
         useZip: action.forceZip || next.length >= 2 ? true : state.useZip,
+      };
+    }
+    case "SET_BATCH_MODE": {
+      const mode = action.mode;
+      return {
+        ...state,
+        batchMode: mode,
+        items: state.items.map((it) => {
+          const defaultFmt = getFormatForDocBatchMode(mode, it.extensao);
+          const targets = getTargetDocFormats(it.extensao);
+          const fmt = targets.includes(defaultFmt) ? defaultFmt : targets[0];
+          return {
+            ...it,
+            formato: fmt,
+            formatoIndividual: null,
+            delimitadorCsv: mode === "to_csv" ? ";" : it.delimitadorCsv,
+          };
+        }),
+      };
+    }
+    case "SET_ROW_FORMAT": {
+      return {
+        ...state,
+        items: state.items.map((it) => {
+          if (it.id !== action.id) return it;
+          const defaultFmt = getFormatForDocBatchMode(state.batchMode, it.extensao);
+          if (action.formato === null || action.formato === defaultFmt) {
+            return {
+              ...it,
+              formato: defaultFmt,
+              formatoIndividual: null,
+            };
+          }
+          return {
+            ...it,
+            formato: action.formato,
+            formatoIndividual: action.formato,
+          };
+        }),
       };
     }
     case "UPDATE":
@@ -76,6 +149,9 @@ interface DocsContextValue {
   items: DocRecord[];
   folderName: string;
   useZip: boolean;
+  batchMode: DocBatchMode;
+  setBatchMode: (mode: DocBatchMode) => void;
+  setRowFormat: (id: string, formato: DocOutputFormat | null) => void;
   setUseZip: (v: boolean) => void;
   addFiles: (files: File[], folderName?: string | null, hasFolder?: boolean) => Promise<number>;
   updateItem: (id: string, patch: Partial<DocRecord>) => void;
@@ -92,6 +168,7 @@ export function DocumentsProvider({ children }: { children: React.ReactNode }) {
     items: [],
     folderName: "documentos",
     useZip: true,
+    batchMode: "all_pdf",
   });
 
   const hashesRef = useRef<Set<string>>(new Set());
@@ -121,6 +198,7 @@ export function DocumentsProvider({ children }: { children: React.ReactNode }) {
           tamanhoBytes: file.size,
           previewUrl: isImg ? URL.createObjectURL(file) : undefined,
           formato: targets[0],
+          formatoIndividual: null,
           rotacao: 0,
           intervaloPaginas: "",
           tamanhoPagina: "A4",
@@ -137,6 +215,14 @@ export function DocumentsProvider({ children }: { children: React.ReactNode }) {
     },
     []
   );
+
+  const setBatchMode = useCallback((mode: DocBatchMode) => {
+    dispatch({ type: "SET_BATCH_MODE", mode });
+  }, []);
+
+  const setRowFormat = useCallback((id: string, formato: DocOutputFormat | null) => {
+    dispatch({ type: "SET_ROW_FORMAT", id, formato });
+  }, []);
 
   const updateItem = useCallback((id: string, patch: Partial<DocRecord>) => {
     dispatch({ type: "UPDATE", id, patch });
@@ -174,6 +260,9 @@ export function DocumentsProvider({ children }: { children: React.ReactNode }) {
         items: state.items,
         folderName: state.folderName,
         useZip: state.useZip,
+        batchMode: state.batchMode,
+        setBatchMode,
+        setRowFormat,
         setUseZip,
         addFiles,
         updateItem,

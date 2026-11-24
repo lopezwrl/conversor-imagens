@@ -1,4 +1,3 @@
-import { Check, Loader2, X } from "lucide-react";
 import type { QueueEntry } from "../../types/shared";
 
 interface ProcessingPanelProps {
@@ -23,39 +22,35 @@ export function ProcessingPanel({
   const activeIdx = activeStage ? stages.findIndex((s) => s.id === activeStage) : -1;
 
   return (
-    <div className="mt-4 rounded-xl border-2 border-[#BC9200] bg-[#FFF3DE] p-4 text-left text-[var(--ink-primary)] shadow-lg">
-      <div className="mb-2 flex items-center justify-between gap-3 font-mono text-xs font-bold">
+    <div className="mt-4 rounded-[6px] bg-[#F4D09A]/65 p-4 text-left text-[var(--ink-primary)]">
+      <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px] font-semibold">
         <span>{statusText}</span>
-        <span className="rounded bg-[#60011D] px-2 py-0.5 text-[#FDE2B9]">{percent}%</span>
+        <span>{percent}%</span>
       </div>
 
-      <div className="h-3 w-full overflow-hidden rounded-full border border-[#BC9200] bg-[#FDE2B9]">
+      <div className="h-2 w-full overflow-hidden rounded-[6px] bg-[#FFF3DE]">
         <div
-          className="h-full transition-[width] duration-200 ease-out"
-          style={{
-            width: `${percent}%`,
-            background: "linear-gradient(90deg, #60011D 0%, #BC9200 50%, #0B3B46 100%)",
-          }}
+          className="h-full bg-[var(--brand-primary)] transition-[width] duration-200 ease-out"
+          style={{ width: `${percent}%` }}
         />
       </div>
 
       {stages.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div className="mt-2.5 flex flex-wrap items-center gap-4 text-[13px]">
           {stages.map((st, idx) => {
             const done = percent === 100 || (activeIdx !== -1 && idx < activeIdx);
             const current = percent < 100 && idx === activeIdx;
             return (
               <span
                 key={st.id}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[11px] font-bold ${
+                className={
                   done
-                    ? "bg-[#0B3B46] text-[#FDE2B9]"
+                    ? "font-semibold text-[var(--ink-secondary)]"
                     : current
-                    ? "bg-[#60011D] text-[#FDE2B9]"
-                    : "bg-[#FDE2B9] text-[var(--ink-primary)]/60"
-                }`}
+                    ? "font-semibold text-[var(--ink-primary)] underline decoration-[#BC9200]"
+                    : "text-[var(--ink-primary)]"
+                }
               >
-                {done ? <Check className="h-3 w-3" /> : current ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                 {st.label}
               </span>
             );
@@ -64,28 +59,21 @@ export function ProcessingPanel({
       )}
 
       {queue.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[#BC9200]/30 pt-3">
+        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 pt-2 text-[13px]">
           {queue.map((item, idx) => (
             <span
               key={`${item.nome}-${idx}`}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] font-semibold ${
+              className={`font-mono ${
                 item.status === "processando"
-                  ? "border-[#BC9200] bg-[#60011D] text-[#FDE2B9]"
+                  ? "font-semibold text-[var(--ink-primary)]"
                   : item.status === "concluida"
-                  ? "border-[#0B3B46] bg-[#0B3B46] text-[#FDE2B9]"
+                  ? "text-[var(--ink-secondary)]"
                   : item.status === "erro"
-                  ? "border-[#60011D] bg-[#60011D]/20 text-[#60011D]"
-                  : "border-[#BC9200]/40 bg-[#FDE2B9] text-[var(--ink-primary)]/70"
+                  ? "text-[#60011D] line-through"
+                  : "text-[var(--ink-primary)]"
               }`}
             >
-              {item.status === "processando" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : item.status === "concluida" ? (
-                <Check className="h-3 w-3" />
-              ) : item.status === "erro" ? (
-                <X className="h-3 w-3" />
-              ) : null}
-              <span className="max-w-[160px] truncate">{item.nome}</span>
+              {item.nome}
             </span>
           ))}
         </div>

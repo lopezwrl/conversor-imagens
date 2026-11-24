@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Archive,
-  Download,
-  FolderOpen,
-  Image as ImageIcon,
-  Paintbrush,
-  Plus,
-  Scissors,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { ArrowDown, Plus } from "lucide-react";
 import { useImages } from "../../state/images";
 import { useDocuments } from "../../state/documents";
 import { useSection } from "../../state/section";
@@ -42,7 +32,7 @@ import { MaskEditor } from "./MaskEditor";
 import { Lightbox } from "./Lightbox";
 
 const STAGES = [
-  { id: "removendo_fundo", label: "Remover Fundo" },
+  { id: "removendo_fundo", label: "Remover fundo" },
   { id: "redimensionando", label: "Redimensionar" },
   { id: "convertendo", label: "Converter" },
 ];
@@ -66,6 +56,9 @@ export function ImageStudio() {
     items: images,
     folderName,
     useZip,
+    batchFormat,
+    setBatchFormat,
+    setRowFormat,
     setUseZip,
     addFiles,
     updateItem,
@@ -80,6 +73,10 @@ export function ImageStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const finishedTimerRef = useRef<number | null>(null);
+
+  const [dragActive, setDragActive] = useState(false);
+  const [justFinished, setJustFinished] = useState(false);
 
   const [renameRule, setRenameRule] = useState<BatchRenameRule>({
     prefix: "",
@@ -89,27 +86,30 @@ export function ImageStudio() {
     separator: "_",
   });
 
-  // Seletores visuais simples em pílulas (sem poluição!)
-  const [selectedFormat, setSelectedFormat] = useState<ImageOutputFormat | null>(null);
   const [sizePreset, setSizePreset] = useState<SizePreset>("original");
   const [customW, setCustomW] = useState("");
   const [customH, setCustomH] = useState("");
   const [globalCutout, setGlobalCutout] = useState<false | CutoutMode>(false);
 
-  // Reage à rota clicada no Portal (ex: #/fotos?acao=recorte)
   useEffect(() => {
     if (activeRouteAction === "recorte") {
       setGlobalCutout("inteligente");
-      setSelectedFormat("PNG");
-      updateAll(() => ({ removerFundo: true, modoRemocao: "inteligente", formato: "PNG" }));
+      setBatchFormat("PNG");
+      updateAll(() => ({ removerFundo: true, modoRemocao: "inteligente" }));
     } else if (activeRouteAction === "redimensionar") {
       setSizePreset("catalogo");
       updateAll(() => ({ largura: "1200", altura: "1200", manterProporcao: true }));
     } else if (activeRouteAction === "converter") {
-      setSelectedFormat("WEBP");
-      updateAll(() => ({ formato: "WEBP", qualidade: 85 }));
+      setBatchFormat("WEBP");
+      updateAll(() => ({ qualidade: 85 }));
     }
-  }, [activeRouteAction, updateAll]);
+  }, [activeRouteAction, setBatchFormat, updateAll]);
+
+  useEffect(() => {
+    return () => {
+      if (finishedTimerRef.current) window.clearTimeout(finishedTimerRef.current);
+    };
+  }, []);
 
   const [processing, setProcessing] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
@@ -133,6 +133,11 @@ export function ImageStudio() {
     [images]
   );
 
+  const totalInputBytes = useMemo(
+    () => images.reduce((acc, it) => acc + it.tamanhoBytes, 0),
+    [images]
+  );
+
   const handleIncomingFiles = async (
     rawFiles: File[],
     fn?: string | null,
@@ -142,37 +147,28 @@ export function ImageStudio() {
     const docs = rawFiles.filter((f) => DOC_ONLY_EXTENSIONS.has(getExtension(f.name)));
 
     if (imgs.length > 0) {
-      const added = await addFiles(imgs, fn, hasFolder);
-      if (added > 0) {
-        notify(`${added} ${added === 1 ? "foto adicionada" : "fotos adicionadas"}.`, "ok");
-      } else {
-        notify("Essas fotos já estão na bancada.", "neutral");
-      }
+      await addFiles(imgs, fn, hasFolder);
       return;
     }
 
     if (docs.length > 0) {
       await addDocs(docs, fn, hasFolder);
       navigate("docs");
-      notify("Documento enviado para a seção Documentos.", "neutral");
       return;
     }
 
-    notify("Nenhuma imagem compatível encontrada.", "warn");
+    notify("Nenhuma imagem compatível encontrada.", "err");
   };
 
-  // Ações de 1 clique na barra visual
+  // Seleções sem toasts (o próprio controle segmentado mostra o estado)
   const handleSelectBatchFormat = (fmt: ImageOutputFormat) => {
-    setSelectedFormat(fmt);
-    updateAll(() => ({ formato: fmt }));
-    notify(`Formato ${fmt} aplicado em todas as fotos.`, "ok");
+    setBatchFormat(fmt);
   };
 
   const handleSelectSizePreset = (preset: SizePreset) => {
     setSizePreset(preset);
     if (preset === "original") {
       updateAll(() => ({ largura: "", altura: "", manterProporcao: true, modoAjuste: "inside" }));
-      notify("Tamanho original mantido.", "ok");
     } else if (preset === "half") {
       updateAll((img) => ({
         largura: String(Math.max(1, Math.round(img.larguraOriginal / 2))),
@@ -180,7 +176,6 @@ export function ImageStudio() {
         manterProporcao: true,
         modoAjuste: "inside",
       }));
-      notify("Redução de 50% aplicada em todas as fotos.", "ok");
     } else if (preset === "catalogo") {
       updateAll(() => ({
         largura: "1200",
@@ -188,7 +183,6 @@ export function ImageStudio() {
         manterProporcao: true,
         modoAjuste: "inside",
       }));
-      notify("Medida Catálogo (1200×1200) aplicada.", "ok");
     } else if (preset === "quadrado") {
       updateAll(() => ({
         largura: "1080",
@@ -196,7 +190,6 @@ export function ImageStudio() {
         manterProporcao: true,
         modoAjuste: "cover",
       }));
-      notify("Medida Quadrado (1080×1080) aplicada.", "ok");
     }
   };
 
@@ -210,21 +203,40 @@ export function ImageStudio() {
     setGlobalCutout(mode);
     if (mode === false) {
       updateAll(() => ({ removerFundo: false }));
-      notify("Remoção de fundo desativada no lote.", "neutral");
     } else {
+      if (batchFormat === "JPEG") setBatchFormat("PNG");
       updateAll((img) => ({
         removerFundo: true,
         modoRemocao: mode,
         formato: img.formato === "JPEG" ? "PNG" : img.formato,
       }));
-      notify("Remoção de fundo ativada em todas as fotos.", "ok");
     }
+  };
+
+  const downloadAllResults = () => {
+    if (lastZip) {
+      triggerDownload(base64ToBlob(lastZip.base64, "application/zip"), lastZip.nome);
+      return;
+    }
+    results.forEach((r) => {
+      if (r.status === "ok" && r.dados) {
+        triggerDownload(
+          base64ToBlob(r.dados, r.mime || "image/png"),
+          r.salvo_como || r.nome
+        );
+      }
+    });
   };
 
   const runBatch = async () => {
     if (!images.length || processing) return;
+    if (justFinished && results.length > 0) {
+      downloadAllResults();
+      return;
+    }
 
     setProcessing(true);
+    setJustFinished(false);
     setProgressPct(2);
     setProgressText("Iniciando lote...");
     setActiveStage(null);
@@ -257,10 +269,6 @@ export function ImageStudio() {
     });
 
     const activeZip = useZip && !hasManualCutout;
-    if (hasManualCutout && useZip) {
-      notify("Modo pincel ativo: entrega individual habilitada para retoque.", "neutral");
-    }
-
     formData.append("config", JSON.stringify(config));
     formData.append("usar_zip", String(activeZip));
     formData.append("nome_zip", `${folderName || "revela"}_imagens.zip`);
@@ -276,7 +284,7 @@ export function ImageStudio() {
       }
 
       let cursor = 0;
-      const completed = await consumeNdjsonStream<ImageStreamEvent>(response, (evt) => {
+      await consumeNdjsonStream<ImageStreamEvent>(response, (evt) => {
         if (evt.tipo === "progresso") {
           const base = (evt.indice - 1) / evt.total;
           const frac = (STAGE_WEIGHT[evt.etapa] ?? 0.9) / evt.total;
@@ -318,7 +326,7 @@ export function ImageStudio() {
           }
         } else if (evt.tipo === "concluido") {
           setProgressPct(100);
-          setProgressText("Revelação concluída.");
+          setProgressText("Concluído.");
           if (activeZip && evt.zip_base64) {
             const z = { base64: evt.zip_base64, nome: evt.nome_zip || "revela_imagens.zip" };
             setLastZip(z);
@@ -327,17 +335,16 @@ export function ImageStudio() {
         }
       });
 
-      if (!completed && collected.length > 0) {
-        notify(
-          `Conexão interrompida: ${collected.length} de ${images.length} concluídas.`,
-          "warn"
-        );
-      }
-
       setResults(collected);
       const okCount = collected.filter((r) => r.status === "ok").length;
       if (okCount > 0) {
-        notify(`${okCount} ${okCount === 1 ? "foto revelada" : "fotos reveladas"}.`, "ok");
+        setJustFinished(true);
+        if (finishedTimerRef.current) window.clearTimeout(finishedTimerRef.current);
+        finishedTimerRef.current = window.setTimeout(() => setJustFinished(false), 4500);
+        notify(
+          okCount === 1 ? "1 foto concluída." : `${okCount} fotos concluídas.`,
+          "ok"
+        );
         window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 160);
       }
     } catch {
@@ -347,377 +354,384 @@ export function ImageStudio() {
     }
   };
 
+  // Botão curto ("Revelar 12 fotos") + linha de resumo ao lado ("WEBP · 1200 px · fundo mantido")
+  const { buttonLabel, summaryLine } = useMemo(() => {
+    const countText = images.length === 1 ? "1 foto" : `${images.length} fotos`;
+    const exceptions = images.filter((i) => i.formatoIndividual !== null);
+    const fmtText =
+      exceptions.length === 0
+        ? batchFormat
+        : `${batchFormat} (${exceptions.length} ${
+            exceptions.length === 1 ? "exceção" : "exceções"
+          })`;
+    const sizeText =
+      sizePreset === "half"
+        ? "50%"
+        : sizePreset === "catalogo"
+        ? "1200 px"
+        : sizePreset === "quadrado"
+        ? "1080 px"
+        : sizePreset === "custom" && (customW || customH)
+        ? `${customW || "auto"}×${customH || "auto"} px`
+        : "tamanho original";
+    const anyCutout = images.some((i) => i.removerFundo);
+    const bgText = anyCutout ? "sem fundo" : "fundo mantido";
+    return {
+      buttonLabel: `Revelar ${countText}`,
+      summaryLine: `${fmtText} · ${sizeText} · ${bgText}`,
+    };
+  }, [images, batchFormat, sizePreset, customW, customH]);
+
   const stats = useMemo(() => {
     const ok = results.filter((r) => r.status === "ok");
-    const err = results.length - ok.length;
     const origBytes = ok.reduce((acc, r) => acc + (r.tamanhoOriginalBytes || 0), 0);
     const finalBytes = ok.reduce((acc, r) => acc + (r.tamanho_bytes || 0), 0);
     const deltaPct = origBytes > 0 ? Math.round((1 - finalBytes / origBytes) * 1000) / 10 : 0;
-    return { total: results.length, ok: ok.length, err, origBytes, finalBytes, deltaPct };
+    return { total: results.length, ok: ok.length, origBytes, finalBytes, deltaPct };
   }, [results]);
 
+  const countHeaderLabel =
+    images.length === 0
+      ? "Nenhuma foto na fila"
+      : `${images.length === 1 ? "1 foto" : `${images.length} fotos`} · ${formatBytes(totalInputBytes)}`;
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      onDragOver={(e) => e.preventDefault()}
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!dragActive) setDragActive(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setDragActive(false);
+      }}
       onDrop={async (e) => {
         e.preventDefault();
+        setDragActive(false);
         const { files, folderName: fn, hasFolder } = await readDroppedItems(e.dataTransfer);
         if (files.length) await handleIncomingFiles(files, fn, hasFolder);
       }}
-      className="mx-auto max-w-7xl px-4 py-5 sm:px-8"
+      className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8"
     >
-      {/* Barra Topo em Creme (#FDE2B9) com Borda Dourada (#BC9200): Tudo super visível! */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] px-6 py-4 text-[#60011D] shadow-2xl">
-        <div>
-          <span className="rounded bg-[#0B3B46] px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#FDE2B9]">
-            01 · Estúdio de Fotos
-          </span>
-          <h1 className="mt-1 font-display text-3xl font-bold text-[#60011D] sm:text-4xl">
-            Transformar Imagens
-          </h1>
-        </div>
+      {/* Folha centralizada em Fotos */}
+      <motion.div
+        initial={{ opacity: 0.94, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0.94, transition: { duration: 0.08 } }}
+        transition={{
+          y: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+          opacity: { duration: 0.12, ease: "easeOut" },
+        }}
+        className={`mx-auto w-full rounded-[6px] border border-[#BC9200] border-l-4 border-l-[#60011D] bg-[#FDE2B9] p-6 text-[#60011D] transition-transform duration-200 sm:p-8 ${
+          dragActive ? "-translate-y-1" : ""
+        }`}
+      >
+        {/* Cabeçalho simples: título serifado + estado + Adicionar, Pasta e Limpar fila na mesma linha */}
+        <div className="flex flex-wrap items-baseline justify-between gap-4 pb-5">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h1 className="font-display text-3xl font-semibold text-[#60011D] sm:text-4xl">
+              {dragActive ? "Solte para adicionar" : "Fotos"}
+            </h1>
+            <span className="text-[13px] font-medium text-[#3B0011]">{countHeaderLabel}</span>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-            <Plus className="h-4 w-4" />
-            Adicionar Fotos
-          </Button>
-          <Button variant="secondary" onClick={() => folderInputRef.current?.click()}>
-            <FolderOpen className="h-4 w-4" />
-            Pasta
-          </Button>
-          {images.length > 0 && (
-            <Button variant="opposite" size="lg" disabled={processing} onClick={runBatch}>
-              <Sparkles className="h-4 w-4 text-[#BC9200]" />
-              {processing ? "Revelando..." : `Revelar ${images.length} Foto(s)`}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+              <Plus className="h-3.5 w-3.5" />
+              Adicionar
             </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Estado vazio: Ficha Creme grande e luminosa sobre o Rio */}
-      {images.length === 0 && (
-        <div className="my-8 rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] p-10 text-center text-[#60011D] shadow-2xl sm:p-14">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-[#BC9200] bg-[#60011D] text-[#FDE2B9] shadow-lg">
-            <ImageIcon className="h-8 w-8 text-[#BC9200]" />
-          </div>
-          <h2 className="font-display text-3xl font-bold text-[#60011D] sm:text-4xl">
-            Solte suas fotos ou uma pasta inteira aqui
-          </h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm font-medium text-[#60011D]/80">
-            Converta entre PNG, JPEG, WEBP, AVIF, GIF e TIFF, redimensione em massa e remova o fundo em segundos.
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" onClick={() => fileInputRef.current?.click()}>
-              <ImageIcon className="h-4 w-4 text-[#BC9200]" />
-              Escolher Fotos
+            <Button size="sm" variant="secondary" onClick={() => folderInputRef.current?.click()}>
+              Pasta
             </Button>
-            <Button size="lg" variant="opposite" onClick={() => folderInputRef.current?.click()}>
-              <FolderOpen className="h-4 w-4 text-[#BC9200]" />
-              Escolher Pasta Inteira
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Painel de Lote Simplificado em Creme (#FDE2B9): Pílulas grandes de 1 clique! */}
-      {images.length > 0 && (
-        <section className="mb-7 space-y-4 rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] p-5 text-[#60011D] shadow-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#60011D]/15 pb-3">
-            <div className="flex items-center gap-2.5">
-              <span className="rounded-lg bg-[#60011D] px-3 py-1 font-mono text-xs font-bold text-[#FDE2B9]">
-                {images.length} foto(s)
-              </span>
-              <h2 className="font-display text-xl font-bold text-[#60011D]">
-                Ajuste Rápido para Todas
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                clearAll();
-                setResults([]);
-                setLastZip(null);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#60011D] px-3 py-1.5 font-mono text-xs font-bold text-[#FDE2B9] hover:bg-[#7d0428] cursor-pointer"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Limpar Tudo
-            </button>
-          </div>
-
-          {/* Linha 1: Converter Formato com 1 clique */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border-2 border-[#BC9200] bg-[#FFF3DE] p-3.5">
-              <span className="mb-2 block font-mono text-xs font-bold uppercase text-[#60011D]">
-                1. Formato de Saída (1 clique)
-              </span>
-              <div className="grid grid-cols-3 gap-1.5">
-                {IMAGE_FORMATS.map((fmt) => {
-                  const active = selectedFormat === fmt;
-                  return (
-                    <button
-                      key={fmt}
-                      type="button"
-                      onClick={() => handleSelectBatchFormat(fmt)}
-                      className={`rounded-lg border-2 py-2 font-mono text-xs font-bold transition-all cursor-pointer ${
-                        active
-                          ? "border-[#BC9200] bg-[#60011D] text-[#FDE2B9] shadow-md"
-                          : "border-[#60011D]/20 bg-[#FDE2B9] text-[#60011D] hover:border-[#60011D]"
-                      }`}
-                    >
-                      {fmt}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Linha 2: Redimensionar com 1 clique */}
-            <div className="rounded-xl border-2 border-[#BC9200] bg-[#FFF3DE] p-3.5">
-              <span className="mb-2 block font-mono text-xs font-bold uppercase text-[#60011D]">
-                2. Tamanho das Fotos
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                {(
-                  [
-                    { id: "original", label: "Original" },
-                    { id: "half", label: "Reduzir 50%" },
-                    { id: "catalogo", label: "Catálogo 1200" },
-                    { id: "quadrado", label: "Quadrado 1080" },
-                    { id: "custom", label: "Medida Exata..." },
-                  ] as const
-                ).map((p) => {
-                  const active = sizePreset === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectSizePreset(p.id)}
-                      className={`rounded-lg border-2 px-2.5 py-2 text-xs font-bold transition-all cursor-pointer ${
-                        p.id === "custom" ? "col-span-2" : ""
-                      } ${
-                        active
-                          ? "border-[#BC9200] bg-[#60011D] text-[#FDE2B9] shadow-md"
-                          : "border-[#60011D]/20 bg-[#FDE2B9] text-[#60011D] hover:border-[#60011D]"
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {sizePreset === "custom" && (
-                <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-[#BC9200]/40 pt-2.5">
-                  <div>
-                    <Label>Largura (px)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="Ex: 800"
-                      className="font-mono"
-                      value={customW}
-                      onChange={(e) => handleApplyCustomDimensions(e.target.value, customH)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Altura (px)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="Ex: 800"
-                      className="font-mono"
-                      value={customH}
-                      onChange={(e) => handleApplyCustomDimensions(customW, e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Linha 3: Remover Fundo com 1 clique (Acende em Petróleo #0B3B46!) */}
-            <div className="rounded-xl border-2 border-[#BC9200] bg-[#FFF3DE] p-3.5">
-              <span className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold uppercase text-[#0B3B46]">
-                <Scissors className="h-3.5 w-3.5" />
-                3. Fundo da Imagem
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                {(
-                  [
-                    { id: false as const, label: "Manter Fundo" },
-                    { id: "automatico" as const, label: "Remover (Rápido)" },
-                    { id: "inteligente" as const, label: "Remover (Refinado)" },
-                    { id: "manual" as const, label: "Remover + Pincel" },
-                  ]
-                ).map((opt) => {
-                  const active = globalCutout === opt.id;
-                  return (
-                    <button
-                      key={String(opt.id)}
-                      type="button"
-                      onClick={() => handleSelectGlobalCutout(opt.id)}
-                      className={`rounded-lg border-2 px-2.5 py-2 text-xs font-bold transition-all cursor-pointer ${
-                        active
-                          ? "border-[#BC9200] bg-[#0B3B46] text-[#FDE2B9] shadow-md"
-                          : "border-[#0B3B46]/25 bg-[#FDE2B9] text-[#0B3B46] hover:border-[#0B3B46]"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Linha 4: Renomear em Lote + Opção ZIP + Botão Revelar */}
-          <BatchRename
-            rule={renameRule}
-            onChange={setRenameRule}
-            sampleExtension={IMAGE_FORMAT_EXT[images[0]?.formato || "PNG"]}
-            sampleOriginalBase={images[0]?.nomeBase || "foto"}
-            hasCustomNames={hasCustomNames}
-            onResetCustomNames={() => updateAll(() => ({ nomePersonalizado: null }))}
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <label className="inline-flex items-center gap-2.5 text-xs font-bold text-[#60011D] cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={useZip}
-                onChange={(e) => setUseZip(e.target.checked)}
-                className="h-4 w-4 accent-[#60011D]"
-              />
-              Baixar tudo junto em um arquivo .ZIP (também permite baixar individualmente)
-            </label>
-
-            <Button variant="opposite" size="lg" disabled={processing} onClick={runBatch}>
-              <Sparkles className="h-4 w-4 text-[#BC9200]" />
-              {processing ? "Processando..." : `Revelar ${images.length} Foto(s) Agora`}
-            </Button>
-          </div>
-
-          <ProcessingPanel
-            visible={processing}
-            percent={progressPct}
-            statusText={progressText}
-            stages={STAGES}
-            activeStage={activeStage}
-            queue={queue}
-          />
-        </section>
-      )}
-
-      {/* Grade de Cartões Creme */}
-      {images.length > 0 && (
-        <section className="mb-10">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {images.map((item, index) => (
-              <ImageCard
-                key={item.id}
-                item={item}
-                index={index}
-                renameRule={renameRule}
-                onUpdate={updateItem}
-                onRemove={removeItem}
-                onZoom={(src, title, meta) => setLightbox({ src, title, meta })}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Resultados Revelados em Ficha Creme */}
-      {results.length > 0 && (
-        <section
-          ref={resultsRef}
-          className="rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] p-6 text-[#60011D] shadow-2xl"
-        >
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#60011D]/15 pb-4">
-            <div>
-              <span className="rounded bg-[#0B3B46] px-2.5 py-1 font-mono text-xs font-bold text-[#FDE2B9]">
-                Concluído · {stats.ok} de {stats.total}
-              </span>
-              <h2 className="mt-1.5 font-display text-3xl font-bold text-[#60011D]">
-                Fotos Reveladas
-              </h2>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="rounded-lg border border-[#BC9200] bg-[#FFF3DE] px-3 py-1.5 font-mono text-xs font-bold text-[#0B3B46]">
-                {formatBytes(stats.origBytes)} → {formatBytes(stats.finalBytes)}
-                {stats.deltaPct > 0 ? ` (-${stats.deltaPct}%)` : ""}
-              </span>
-              {lastZip && (
-                <Button
-                  onClick={() =>
-                    triggerDownload(base64ToBlob(lastZip.base64, "application/zip"), lastZip.nome)
-                  }
-                >
-                  <Archive className="h-4 w-4" />
-                  Baixar ZIP
-                </Button>
-              )}
-              <Button
-                variant="secondary"
+            {images.length > 0 && (
+              <button
+                type="button"
                 onClick={() => {
                   clearAll();
                   setResults([]);
                   setLastZip(null);
+                  setJustFinished(false);
                 }}
+                className="rounded-[6px] px-2.5 py-1.5 text-[13px] font-semibold text-[#60011D] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
               >
-                Novo Lote
+                Limpar fila
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Estado vazio */}
+        {images.length === 0 ? (
+          <div className="rounded-[6px] bg-[#F4D09A]/50 px-6 py-14 text-center">
+            <h2 className="font-display text-2xl font-semibold text-[#60011D] sm:text-3xl">
+              {dragActive
+                ? "Solte para adicionar"
+                : "Converta e redimensione centenas de fotos de uma vez."}
+            </h2>
+            <p className="mx-auto mt-2 max-w-md font-sans text-[13px] text-[#3B0011]">
+              Arraste arquivos ou pastas para esta folha. Formatos aceitos: PNG, JPG, WEBP, AVIF, GIF, TIFF e BMP.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-[#60011D] text-[#FDE2B9]"
+              >
+                <Plus className="h-4 w-4" />
+                Escolher fotos
+              </Button>
+              <Button variant="secondary" onClick={() => folderInputRef.current?.click()}>
+                Escolher pasta
               </Button>
             </div>
           </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Grupos do Lote separados por leve tom mais escuro de creme, sem bordas */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              {/* Grupo 1: Formato em controle segmentado */}
+              <div className="rounded-[6px] bg-[#F4D09A]/55 p-3.5">
+                <Label>Formato</Label>
+                <div className="mt-1.5 flex overflow-hidden rounded-[6px] bg-[#FDE2B9]">
+                  {IMAGE_FORMATS.map((fmt) => {
+                    const active = batchFormat === fmt;
+                    return (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => handleSelectBatchFormat(fmt)}
+                        className={`flex-1 py-1.5 font-mono text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer ${
+                          active
+                            ? "bg-[#60011D] font-semibold text-[#FDE2B9] ring-1 ring-inset ring-[#BC9200]"
+                            : "text-[#3B0011] hover:bg-[#F4D09A]"
+                        }`}
+                      >
+                        {fmt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {results.map((r, i) => {
-              const resUrl = r.dados && r.mime ? `data:${r.mime};base64,${r.dados}` : "";
-              return (
-                <article
-                  key={`${r.nome}-${i}`}
-                  className="overflow-hidden rounded-xl border-2 border-[#BC9200] bg-[#FFF3DE] shadow-md"
+              {/* Grupo 2: Tamanho em controle segmentado */}
+              <div className="rounded-[6px] bg-[#F4D09A]/55 p-3.5">
+                <Label>Tamanho</Label>
+                <div className="mt-1.5 flex overflow-hidden rounded-[6px] bg-[#FDE2B9]">
+                  {(
+                    [
+                      { id: "original", label: "Original" },
+                      { id: "half", label: "50%" },
+                      { id: "catalogo", label: "1200 px" },
+                      { id: "quadrado", label: "1080 px" },
+                      { id: "custom", label: "Exato" },
+                    ] as const
+                  ).map((p) => {
+                    const active = sizePreset === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleSelectSizePreset(p.id)}
+                        className={`flex-1 py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer ${
+                          active
+                            ? "bg-[#60011D] font-semibold text-[#FDE2B9] ring-1 ring-inset ring-[#BC9200]"
+                            : "text-[#3B0011] hover:bg-[#F4D09A]"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {sizePreset === "custom" && (
+                  <div className="mt-2.5 grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Largura (px)"
+                      value={customW}
+                      onChange={(e) => handleApplyCustomDimensions(e.target.value, customH)}
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Altura (px)"
+                      value={customH}
+                      onChange={(e) => handleApplyCustomDimensions(customW, e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Grupo 3: Fundo em controle segmentado */}
+              <div className="rounded-[6px] bg-[#F4D09A]/55 p-3.5">
+                <Label>Fundo</Label>
+                <div className="mt-1.5 flex overflow-hidden rounded-[6px] bg-[#FDE2B9]">
+                  {(
+                    [
+                      { id: false as const, label: "Manter" },
+                      { id: "automatico" as const, label: "Rápido" },
+                      { id: "inteligente" as const, label: "Refinado" },
+                      { id: "manual" as const, label: "Pincel" },
+                    ]
+                  ).map((opt) => {
+                    const active = globalCutout === opt.id;
+                    return (
+                      <button
+                        key={String(opt.id)}
+                        type="button"
+                        onClick={() => handleSelectGlobalCutout(opt.id)}
+                        className={`flex-1 py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer ${
+                          active
+                            ? "bg-[#0B3B46] font-semibold text-[#FDE2B9] ring-1 ring-inset ring-[#BC9200]"
+                            : "text-[#3B0011] hover:bg-[#F4D09A]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Grupo 4: Nome do lote */}
+            <BatchRename
+              rule={renameRule}
+              onChange={setRenameRule}
+              sampleExtension={IMAGE_FORMAT_EXT[images[0]?.formato || batchFormat]}
+              sampleOriginalBase={images[0]?.nomeBase || "foto"}
+              hasCustomNames={hasCustomNames}
+              onResetCustomNames={() => updateAll(() => ({ nomePersonalizado: null }))}
+            />
+
+            {/* Fila de arquivos em linhas compactas */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[13px] font-semibold text-[#3B0011]">Fila</span>
+              </div>
+              {images.map((item, index) => (
+                <ImageCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  renameRule={renameRule}
+                  onSelectFormat={setRowFormat}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  onZoom={(src, title, meta) => setLightbox({ src, title, meta })}
+                />
+              ))}
+            </div>
+
+            <ProcessingPanel
+              visible={processing}
+              percent={progressPct}
+              statusText={progressText}
+              stages={STAGES}
+              activeStage={activeStage}
+              queue={queue}
+            />
+
+            {/* Único botão principal curto + linha de resumo ao lado */}
+            <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[6px] bg-[#F4D09A] px-4 py-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="inline-flex items-center gap-2 text-[13px] font-medium text-[#3B0011] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useZip}
+                    onChange={(e) => setUseZip(e.target.checked)}
+                    className="h-4 w-4 accent-[#60011D]"
+                  />
+                  Agrupar em ZIP
+                </label>
+                <span className="text-[13px] font-medium text-[#3B0011]">{summaryLine}</span>
+              </div>
+
+              <Button
+                size="lg"
+                disabled={processing}
+                onClick={runBatch}
+                className="bg-[#60011D] text-[#FDE2B9]"
+              >
+                {processing
+                  ? "Revelando..."
+                  : justFinished
+                  ? "Pronto · baixar tudo"
+                  : buttonLabel}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Resultados dentro da mesma folha principal */}
+        {results.length > 0 && (
+          <div ref={resultsRef} className="mt-8 border-t border-[#60011D]/20 pt-6">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+              <div className="flex flex-wrap items-baseline gap-3">
+                <h2 className="font-display text-2xl font-semibold text-[#60011D]">
+                  Resultado
+                </h2>
+                <span className="text-[13px] font-medium text-[#3B0011]">
+                  {stats.ok === 1 ? "1 foto concluída" : `${stats.ok} fotos concluídas`} ·{" "}
+                  {formatBytes(stats.origBytes)} → {formatBytes(stats.finalBytes)}
+                  {stats.deltaPct > 0 ? ` (-${stats.deltaPct}%)` : ""}
+                </span>
+              </div>
+
+              {lastZip && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    triggerDownload(base64ToBlob(lastZip.base64, "application/zip"), lastZip.nome)
+                  }
+                  className="bg-[#60011D] text-[#FDE2B9]"
                 >
-                  {r.status === "ok" ? (
-                    <>
-                      <div className="aspect-[16/10] w-full overflow-hidden border-b-2 border-[#BC9200]">
-                        {r.urlOriginal && resUrl ? (
-                          <BeforeAfter
-                            originalUrl={r.urlOriginal}
-                            resultUrl={resUrl}
-                            alt={r.salvo_como || r.nome}
-                          />
-                        ) : resUrl ? (
-                          <img
-                            src={resUrl}
-                            alt={r.salvo_como}
-                            className="develop-reveal h-full w-full object-contain"
-                          />
-                        ) : null}
-                      </div>
+                  <ArrowDown className="h-3.5 w-3.5" />
+                  Baixar ZIP
+                </Button>
+              )}
+            </div>
 
-                      <div className="p-3.5">
-                        <div className="flex items-baseline justify-between gap-2 font-mono text-xs font-bold">
-                          <span className="truncate text-[#60011D]">{r.salvo_como}</span>
-                          <span className="shrink-0 text-[11px] text-[#0B3B46]">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {results.map((r, i) => {
+                const resUrl = r.dados && r.mime ? `data:${r.mime};base64,${r.dados}` : "";
+                return (
+                  <div
+                    key={`${r.nome}-${i}`}
+                    className="overflow-hidden rounded-[6px] bg-[#F4D09A]/55 p-3"
+                  >
+                    {r.status === "ok" ? (
+                      <>
+                        <div className="aspect-[16/10] w-full overflow-hidden rounded-[6px] bg-[#FFF3DE]">
+                          {r.urlOriginal && resUrl ? (
+                            <BeforeAfter
+                              originalUrl={r.urlOriginal}
+                              resultUrl={resUrl}
+                              alt={r.salvo_como || r.nome}
+                            />
+                          ) : resUrl ? (
+                            <img
+                              src={resUrl}
+                              alt={r.salvo_como}
+                              className="develop-reveal h-full w-full object-contain"
+                            />
+                          ) : null}
+                        </div>
+
+                        <div className="mt-2.5 flex items-baseline justify-between gap-2">
+                          <span className="truncate font-mono text-[13px] font-semibold text-[#3B0011]">
+                            {r.salvo_como}
+                          </span>
+                          <span className="shrink-0 text-[13px] text-[#3B0011]">
                             {r.dimensoes} · {r.tamanho_bytes ? formatBytes(r.tamanho_bytes) : ""}
                           </span>
                         </div>
 
                         {r.aviso && (
-                          <p className="mt-2 rounded-lg border border-[#BC9200] bg-[#FDE2B9] p-2 font-mono text-[10px] font-semibold text-[#60011D]">
-                            {r.aviso}
-                          </p>
+                          <p className="mt-1.5 text-[13px] text-[#3B0011]">{r.aviso}</p>
                         )}
 
-                        <div className="mt-3 flex items-center justify-end gap-2 border-t border-[#BC9200]/40 pt-2.5">
+                        <div className="mt-2.5 flex items-center justify-end gap-2">
                           {r.modoRemocao === "manual" && r.dados && (
                             <Button
                               size="sm"
@@ -730,8 +744,7 @@ export function ImageStudio() {
                                 })
                               }
                             >
-                              <Paintbrush className="h-3.5 w-3.5" />
-                              Pincel
+                              Retocar máscara
                             </Button>
                           )}
                           {r.dados && (
@@ -746,26 +759,29 @@ export function ImageStudio() {
                                   r.salvo_como || r.nome
                                 )
                               }
+                              className="bg-[#60011D] text-[#FDE2B9]"
                             >
-                              <Download className="h-3.5 w-3.5" />
+                              <ArrowDown className="h-3.5 w-3.5" />
                               Baixar
                             </Button>
                           )}
                         </div>
+                      </>
+                    ) : (
+                      <div>
+                        <p className="font-mono text-[13px] font-semibold text-[#60011D]">
+                          {r.nome}
+                        </p>
+                        <p className="mt-1 text-[13px] text-[#3B0011]">{r.mensagem}</p>
                       </div>
-                    </>
-                  ) : (
-                    <div className="p-4">
-                      <p className="font-mono text-xs font-bold text-[#60011D]">{r.nome}</p>
-                      <p className="mt-1 text-xs font-medium text-[#60011D]/80">{r.mensagem}</p>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </section>
-      )}
+        )}
+      </motion.div>
 
       <AnimatePresence>
         {editingMask && (
@@ -814,6 +830,6 @@ export function ImageStudio() {
           e.target.value = "";
         }}
       />
-    </motion.div>
+    </div>
   );
 }

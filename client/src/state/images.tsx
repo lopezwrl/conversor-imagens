@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef } from "react";
-import type { ImageRecord } from "../types/image";
+import type { ImageOutputFormat, ImageRecord } from "../types/image";
 import { computeFileHash, getBaseName, getExtension } from "../lib/files";
 import { IMAGE_EXTENSIONS, inferImageFormat } from "../lib/formats";
 
@@ -7,10 +7,13 @@ interface ImagesState {
   items: ImageRecord[];
   folderName: string;
   useZip: boolean;
+  batchFormat: ImageOutputFormat;
 }
 
 type ImagesAction =
   | { type: "ADD"; items: ImageRecord[]; folderName?: string | null; forceZip?: boolean }
+  | { type: "SET_BATCH_FORMAT"; formato: ImageOutputFormat }
+  | { type: "SET_ROW_FORMAT"; id: string; formato: ImageOutputFormat | null }
   | { type: "UPDATE"; id: string; patch: Partial<ImageRecord> }
   | { type: "UPDATE_ALL"; updater: (item: ImageRecord) => Partial<ImageRecord> }
   | { type: "REMOVE"; id: string }
@@ -20,13 +23,40 @@ type ImagesAction =
 function reducer(state: ImagesState, action: ImagesAction): ImagesState {
   switch (action.type) {
     case "ADD": {
-      const nextItems = [...state.items, ...action.items];
+      const normalized = action.items.map((item) => ({
+        ...item,
+        formato: state.batchFormat,
+        formatoIndividual: null,
+      }));
+      const nextItems = [...state.items, ...normalized];
       return {
+        ...state,
         items: nextItems,
         folderName: action.folderName || state.folderName,
         useZip: action.forceZip || nextItems.length >= 3 ? true : state.useZip,
       };
     }
+    case "SET_BATCH_FORMAT":
+      return {
+        ...state,
+        batchFormat: action.formato,
+        items: state.items.map((it) => ({
+          ...it,
+          formato: action.formato,
+          formatoIndividual: null,
+        })),
+      };
+    case "SET_ROW_FORMAT":
+      return {
+        ...state,
+        items: state.items.map((it) => {
+          if (it.id !== action.id) return it;
+          if (action.formato === null || action.formato === state.batchFormat) {
+            return { ...it, formato: state.batchFormat, formatoIndividual: null };
+          }
+          return { ...it, formato: action.formato, formatoIndividual: action.formato };
+        }),
+      };
     case "UPDATE":
       return {
         ...state,
@@ -59,6 +89,9 @@ interface ImagesContextValue {
   items: ImageRecord[];
   folderName: string;
   useZip: boolean;
+  batchFormat: ImageOutputFormat;
+  setBatchFormat: (fmt: ImageOutputFormat) => void;
+  setRowFormat: (id: string, fmt: ImageOutputFormat | null) => void;
   setUseZip: (v: boolean) => void;
   addFiles: (files: File[], folderName?: string | null, hasFolder?: boolean) => Promise<number>;
   updateItem: (id: string, patch: Partial<ImageRecord>) => void;
@@ -74,6 +107,7 @@ export function ImagesProvider({ children }: { children: React.ReactNode }) {
     items: [],
     folderName: "revela",
     useZip: true,
+    batchFormat: "WEBP",
   });
 
   const hashesRef = useRef<Set<string>>(new Set());
@@ -113,6 +147,7 @@ export function ImagesProvider({ children }: { children: React.ReactNode }) {
           urlMiniatura: URL.createObjectURL(file),
           formatoOriginal: fmt,
           formato: fmt,
+          formatoIndividual: null,
           largura: "",
           altura: "",
           qualidade: 90,
@@ -133,6 +168,14 @@ export function ImagesProvider({ children }: { children: React.ReactNode }) {
     },
     []
   );
+
+  const setBatchFormat = useCallback((formato: ImageOutputFormat) => {
+    dispatch({ type: "SET_BATCH_FORMAT", formato });
+  }, []);
+
+  const setRowFormat = useCallback((id: string, formato: ImageOutputFormat | null) => {
+    dispatch({ type: "SET_ROW_FORMAT", id, formato });
+  }, []);
 
   const updateItem = useCallback((id: string, patch: Partial<ImageRecord>) => {
     dispatch({ type: "UPDATE", id, patch });
@@ -166,6 +209,9 @@ export function ImagesProvider({ children }: { children: React.ReactNode }) {
         items: state.items,
         folderName: state.folderName,
         useZip: state.useZip,
+        batchFormat: state.batchFormat,
+        setBatchFormat,
+        setRowFormat,
         setUseZip,
         addFiles,
         updateItem,

@@ -14,6 +14,7 @@ export interface ImageRecord {
   urlMiniatura: string;
   formatoOriginal: ImageOutputFormat;
   formato: ImageOutputFormat;
+  formatoIndividual: ImageOutputFormat | null;
   largura: string;
   altura: string;
   qualidade: number;

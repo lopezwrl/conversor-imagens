@@ -27,22 +27,22 @@ export function Lightbox({ src, title, meta, onClose }: LightboxProps) {
       className="fixed inset-0 z-[105] flex items-center justify-center bg-black/80 p-4"
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
+        initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+        exit={{ scale: 0.96, opacity: 0 }}
         transition={{ duration: 0.18 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[90vh] max-w-4xl flex-col overflow-hidden rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] text-[#60011D] shadow-2xl"
+        className="relative flex max-h-[90vh] max-w-4xl flex-col overflow-hidden rounded-[6px] border border-[#BC9200] bg-[#FDE2B9] text-[#60011D] shadow-lg"
       >
-        <div className="flex items-center justify-between bg-[#60011D] px-4 py-2.5 text-[#FDE2B9]">
-          <span className="truncate font-mono text-xs font-bold">{title}</span>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="truncate font-mono text-xs font-medium">{title}</span>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-[#BC9200]">{meta}</span>
+            <span className="text-xs text-[#60011D]/75">{meta}</span>
             <button
               type="button"
               onClick={onClose}
               aria-label="Fechar visualização"
-              className="rounded p-1 text-[#FDE2B9] hover:bg-white/15 cursor-pointer"
+              className="p-1 text-[#60011D]/70 hover:text-[#60011D] cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>

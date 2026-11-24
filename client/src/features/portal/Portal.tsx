@@ -1,57 +1,38 @@
 import React, { useRef } from "react";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Combine,
-  FileSpreadsheet,
-  FileText,
-  FolderOpen,
-  Image as ImageIcon,
-  Maximize,
-  Scissors,
-  Sparkles,
-} from "lucide-react";
 import { useSection } from "../../state/section";
 import { useImages } from "../../state/images";
 import { useDocuments } from "../../state/documents";
 import { useToast } from "../../state/toasts";
 import { getExtension, readDroppedItems } from "../../lib/files";
 import { DOC_ACCEPTED_EXTENSIONS, DOC_ONLY_EXTENSIONS, IMAGE_EXTENSIONS } from "../../lib/formats";
+import { Button } from "../../components/ui/Button";
 
 export function Portal() {
-  const { navigate, portalHover, setPortalHover, portalDrag, setPortalDrag } = useSection();
+  const { navigate, setPortalHover, portalDrag, setPortalDrag } = useSection();
   const { items: images, addFiles: addImages } = useImages();
   const { items: docs, addFiles: addDocs } = useDocuments();
   const { notify } = useToast();
 
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoFiles = async (
     files: File[],
     folderName?: string | null,
-    hasFolder?: boolean,
-    action: string | null = null
+    hasFolder?: boolean
   ) => {
-    const added = await addImages(files, folderName, hasFolder);
-    navigate("photos", action);
-    if (added > 0) {
-      notify(`${added} ${added === 1 ? "foto pronta" : "fotos prontas"} na bancada.`, "ok");
-    }
+    await addImages(files, folderName, hasFolder);
+    navigate("photos");
   };
 
   const handleDocFiles = async (
     files: File[],
     folderName?: string | null,
-    hasFolder?: boolean,
-    action: string | null = null
+    hasFolder?: boolean
   ) => {
-    const added = await addDocs(files, folderName, hasFolder);
-    navigate("docs", action);
-    if (added > 0) {
-      notify(`${added} ${added === 1 ? "documento pronto" : "documentos prontos"} na mesa.`, "ok");
-    }
+    await addDocs(files, folderName, hasFolder);
+    navigate("docs");
   };
 
   const onDropHalf = async (side: "photos" | "docs", e: React.DragEvent) => {
@@ -70,7 +51,7 @@ export function Portal() {
       } else if (docOnly.length > 0) {
         await handleDocFiles(docOnly, folderName, hasFolder);
       } else {
-        notify("Formato não suportado.", "warn");
+        notify("Formato de arquivo não suportado.", "err");
       }
       return;
     }
@@ -78,46 +59,53 @@ export function Portal() {
     if (docCompat.length > 0) {
       await handleDocFiles(docCompat, folderName, hasFolder);
     } else {
-      notify("Formato não suportado.", "warn");
+      notify("Formato de arquivo não suportado.", "err");
     }
   };
 
+  const photoCountLabel =
+    images.length === 1 ? "Continuar com 1 foto" : `Continuar com ${images.length} fotos`;
+  const docCountLabel =
+    docs.length === 1 ? "Continuar com 1 documento" : `Continuar com ${docs.length} documentos`;
+
+  const waterTextShadow = "0 2px 14px rgba(0, 0, 0, 0.55)";
+
   return (
     <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      className="relative flex min-h-[calc(100vh-76px)] flex-col justify-between px-4 py-4 sm:px-8 lg:py-6"
+      initial={{ opacity: 0.94, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0.94, transition: { duration: 0.08 } }}
+      transition={{
+        y: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+        opacity: { duration: 0.12, ease: "easeOut" },
+      }}
+      className="relative mx-auto flex min-h-[calc(100vh-76px)] max-w-6xl flex-col justify-center gap-6 px-4 py-4 sm:px-8 lg:gap-8 lg:py-6"
     >
-      {/* Emblema Central Bicolor:
-          Metade esquerda Petróleo (#0B3B46) sobre o rio Bordô,
-          Metade direita Bordô (#60011D) sobre o rio Petróleo,
-          Unidas pelo Creme (#FDE2B9) e Dourado (#BC9200). */}
+      {/* Título "Revela" grande, sem caixa, em serifada, com sombra suave escura em ambos os lados */}
       <div className="relative z-20 mx-auto flex flex-col items-center text-center">
-        <div className="relative inline-flex items-center overflow-hidden rounded-2xl border-2 border-[#BC9200] shadow-2xl">
-          <div className="bg-[#0B3B46] px-6 py-2.5 sm:px-8 sm:py-3">
-            <span className="font-display text-4xl font-bold tracking-tight text-[#FDE2B9] sm:text-5xl lg:text-6xl">
-              Re
-            </span>
-          </div>
-          <div className="w-[3px] self-stretch bg-[#BC9200]" />
-          <div className="bg-[#60011D] px-6 py-2.5 sm:px-8 sm:py-3">
-            <span className="font-display text-4xl font-bold tracking-tight text-[#FDE2B9] sm:text-5xl lg:text-6xl">
-              vela
-            </span>
-          </div>
-        </div>
-        <p className="mt-2.5 rounded-full border border-[#BC9200] bg-[#FDE2B9] px-4 py-1 font-mono text-xs font-bold text-[#60011D] shadow-md">
-          Escolha uma rota ou solte seus arquivos em qualquer margem do rio
+        <h1
+          className="select-none font-display text-6xl font-bold tracking-tight sm:text-7xl lg:text-8xl leading-none"
+          style={{ textShadow: waterTextShadow }}
+        >
+          <span className="text-[#FDE2B9]" style={{ textShadow: waterTextShadow }}>
+            Re
+          </span>
+          <span className="text-[#BC9200]" style={{ textShadow: waterTextShadow }}>
+            vela
+          </span>
+        </h1>
+        <p
+          className="mt-2 text-sm font-medium text-[#FDE2B9]"
+          style={{ textShadow: waterTextShadow }}
+        >
+          Solte arquivos em qualquer lado.
         </p>
       </div>
 
-      {/* Duas Margens de Alto Contraste: Fichas Creme (#FDE2B9) sobre o Rio Vivo */}
-      <div className="relative z-10 mx-auto my-auto grid w-full max-w-7xl grid-cols-1 gap-6 py-6 lg:grid-cols-[1fr_90px_1fr] lg:items-stretch">
-        {/* ========== LADO ESQUERDO: FOTOS (Ficha Creme + Bordô #60011D + Acentos Petróleo/Ouro) ========== */}
-        <motion.div
-          whileHover={{ y: -4 }}
+      {/* Dois painéis alinhados lado a lado na mesma altura */}
+      <div className="relative z-10 grid w-full grid-cols-1 items-stretch gap-8 lg:grid-cols-2 lg:gap-12">
+        {/* Painel Esquerdo: Fotos */}
+        <div
           onMouseEnter={() => setPortalHover("photos")}
           onMouseLeave={() => setPortalHover(null)}
           onDragOver={(e) => {
@@ -126,108 +114,68 @@ export function Portal() {
           }}
           onDragLeave={() => setPortalDrag(null)}
           onDrop={(e) => onDropHalf("photos", e)}
-          className={`flex flex-col justify-between rounded-2xl border-2 bg-[#FDE2B9] p-6 text-[#60011D] shadow-2xl transition-all sm:p-7 ${
-            portalDrag === "photos"
-              ? "border-[#0B3B46] ring-4 ring-[#BC9200]"
-              : portalHover === "photos"
-              ? "border-[#BC9200]"
-              : "border-[#BC9200]/80"
+          className={`flex flex-col justify-between rounded-[6px] border border-[#BC9200] border-l-4 border-l-[#60011D] bg-[#FDE2B9] p-6 text-[#60011D] transition-transform duration-200 sm:p-8 ${
+            portalDrag === "photos" ? "-translate-y-1" : ""
           }`}
         >
           <div>
-            <div className="flex items-center justify-between gap-2 border-b-2 border-[#60011D]/15 pb-3">
-              <span className="rounded-md bg-[#60011D] px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider text-[#FDE2B9]">
-                01 · Fotos
-              </span>
-              <span className="rounded-md bg-[#0B3B46] px-2.5 py-1 font-mono text-[11px] font-bold text-[#FDE2B9]">
-                PNG · JPG · WEBP · AVIF
-              </span>
-            </div>
-
-            <h2 className="mt-4 font-display text-3xl font-bold text-[#60011D] sm:text-4xl">
-              Transformar Imagens
+            <h2 className="font-display text-3xl font-semibold text-[#60011D] sm:text-4xl">
+              {portalDrag === "photos" ? "Solte para adicionar" : "Fotos"}
             </h2>
-            <p className="mt-1.5 text-sm font-medium text-[#60011D]/85">
-              Clique em uma função para ir direto à ferramenta ou solte suas fotos aqui:
+            <p className="mt-2 text-sm leading-relaxed text-[#3B0011]">
+              Converta e redimensione centenas de fotos de uma vez.
             </p>
 
-            {/* Rotas funcionais diretas (clicou -> abre já na função!) */}
-            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {/* Ações em linhas com seta à direita */}
+            <div className="my-5 divide-y divide-[#60011D]/20 border-y border-[#60011D]/20">
               <button
                 type="button"
                 onClick={() => navigate("photos", "converter")}
-                className="flex flex-col items-start rounded-xl border-2 border-[#60011D] bg-[#FFF3DE] p-3 text-left transition-all hover:bg-[#60011D] hover:text-[#FDE2B9] cursor-pointer group"
+                className="flex w-full items-center justify-between py-2.5 text-left text-sm font-semibold text-[#60011D] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
               >
-                <Sparkles className="h-4 w-4 text-[#BC9200]" />
-                <span className="mt-1.5 text-xs font-bold">Converter Formato</span>
-                <span className="font-mono text-[10px] opacity-75">WEBP, PNG, JPG, AVIF</span>
+                <span>Converter formato</span>
+                <span aria-hidden="true">→</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => navigate("photos", "redimensionar")}
-                className="flex flex-col items-start rounded-xl border-2 border-[#60011D] bg-[#FFF3DE] p-3 text-left transition-all hover:bg-[#60011D] hover:text-[#FDE2B9] cursor-pointer group"
+                className="flex w-full items-center justify-between py-2.5 text-left text-sm font-semibold text-[#60011D] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
               >
-                <Maximize className="h-4 w-4 text-[#BC9200]" />
-                <span className="mt-1.5 text-xs font-bold">Redimensionar</span>
-                <span className="font-mono text-[10px] opacity-75">Catálogo, 50%, Exato</span>
+                <span>Redimensionar</span>
+                <span aria-hidden="true">→</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => navigate("photos", "recorte")}
-                className="flex flex-col items-start rounded-xl border-2 border-[#0B3B46] bg-[#0B3B46] p-3 text-left text-[#FDE2B9] transition-all hover:brightness-115 cursor-pointer"
+                className="flex w-full items-center justify-between py-2.5 text-left text-sm font-semibold text-[#60011D] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
               >
-                <Scissors className="h-4 w-4 text-[#BC9200]" />
-                <span className="mt-1.5 text-xs font-bold">Remover Fundo</span>
-                <span className="font-mono text-[10px] text-[#FDE2B9]/80">Automático e Pincel</span>
+                <span>Remover fundo</span>
+                <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>
 
-          {/* Botões de Entrada Rápida */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-2.5 border-t-2 border-[#60011D]/15 pt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border-2 border-[#BC9200] bg-[#60011D] px-5 text-xs font-bold uppercase tracking-wider text-[#FDE2B9] shadow-md hover:bg-[#7a0327] cursor-pointer"
-              >
-                <ImageIcon className="h-4 w-4 text-[#BC9200]" />
-                Escolher Fotos
-              </button>
+          <div>
+            {/* Formatos em texto corrido sem serifa logo acima do botão */}
+            <p className="mb-3 font-sans text-[13px] font-medium text-[#3B0011]">
+              Formatos: PNG, JPG, WEBP, AVIF, GIF, TIFF
+            </p>
 
-              <button
-                type="button"
-                onClick={() => folderInputRef.current?.click()}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border-2 border-[#60011D] bg-[#FFF3DE] px-4 text-xs font-bold text-[#60011D] hover:border-[#BC9200] cursor-pointer"
-              >
-                <FolderOpen className="h-4 w-4 text-[#60011D]" />
-                Pasta
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("photos")}
-              className="inline-flex items-center gap-1 font-mono text-xs font-bold text-[#0B3B46] hover:underline cursor-pointer"
+            {/* Botão em Bordô com texto em Creme */}
+            <Button
+              size="lg"
+              onClick={() =>
+                images.length > 0 ? navigate("photos") : photoInputRef.current?.click()
+              }
+              className="w-full bg-[#60011D] text-[#FDE2B9]"
             >
-              <span>{images.length > 0 ? `Ver ${images.length} foto(s)` : "Entrar"}</span>
-              <ArrowRight className="h-4 w-4" />
-            </button>
+              {images.length > 0 ? photoCountLabel : "Escolher fotos"}
+            </Button>
           </div>
-        </motion.div>
-
-        {/* Canal central livre onde os rios Bordô, Petróleo e Ouro se encontram */}
-        <div className="pointer-events-none hidden lg:flex flex-col items-center justify-center">
-          <span className="rounded-full border-2 border-[#BC9200] bg-[#FDE2B9] px-2.5 py-1 font-mono text-[10px] font-bold text-[#60011D] shadow-lg">
-            RIO
-          </span>
         </div>
 
-        {/* ========== LADO DIREITO: DOCUMENTOS (Ficha Creme + Petróleo #0B3B46 + Acentos Bordô/Ouro) ========== */}
-        <motion.div
-          whileHover={{ y: -4 }}
+        {/* Painel Direito: Documentos (alinhado lado a lado na mesma altura) */}
+        <div
           onMouseEnter={() => setPortalHover("docs")}
           onMouseLeave={() => setPortalHover(null)}
           onDragOver={(e) => {
@@ -236,104 +184,78 @@ export function Portal() {
           }}
           onDragLeave={() => setPortalDrag(null)}
           onDrop={(e) => onDropHalf("docs", e)}
-          className={`flex flex-col justify-between rounded-2xl border-2 bg-[#FDE2B9] p-6 text-[#0B3B46] shadow-2xl transition-all sm:p-7 ${
-            portalDrag === "docs"
-              ? "border-[#60011D] ring-4 ring-[#BC9200]"
-              : portalHover === "docs"
-              ? "border-[#BC9200]"
-              : "border-[#BC9200]/80"
+          className={`flex flex-col justify-between rounded-[6px] border border-[#BC9200] border-l-4 border-l-[#0B3B46] bg-[#FDE2B9] p-6 text-[#0B3B46] transition-transform duration-200 sm:p-8 ${
+            portalDrag === "docs" ? "-translate-y-1" : ""
           }`}
         >
           <div>
-            <div className="flex items-center justify-between gap-2 border-b-2 border-[#0B3B46]/15 pb-3">
-              <span className="rounded-md bg-[#0B3B46] px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider text-[#FDE2B9]">
-                02 · Documentos
-              </span>
-              <span className="rounded-md bg-[#60011D] px-2.5 py-1 font-mono text-[11px] font-bold text-[#FDE2B9]">
-                PDF · DOCX · XLSX · CSV
-              </span>
-            </div>
-
-            <h2 className="mt-4 font-display text-3xl font-bold text-[#0B3B46] sm:text-4xl">
-              Transformar Documentos
+            <h2 className="font-display text-3xl font-semibold text-[#0B3B46] sm:text-4xl">
+              {portalDrag === "docs" ? "Solte para adicionar" : "Documentos"}
             </h2>
-            <p className="mt-1.5 text-sm font-medium text-[#0B3B46]/85">
-              Clique em uma função para abrir a mesa de documentos ou solte arquivos aqui:
+
+            {/* Formatos em texto corrido sem serifa logo abaixo do título */}
+            <p className="mt-2 font-sans text-[13px] font-medium text-[#06252C]">
+              PDF, DOCX, XLSX, CSV, JSON, MD, HTML, TXT
             </p>
 
-            {/* Rotas funcionais diretas de Documentos */}
-            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {/* Ações em linhas com uma frase curta de descrição abaixo de cada uma */}
+            <div className="my-5 divide-y divide-[#0B3B46]/20 border-y border-[#0B3B46]/20">
               <button
                 type="button"
-                onClick={() => navigate("docs", "pdf")}
-                className="flex flex-col items-start rounded-xl border-2 border-[#0B3B46] bg-[#FFF3DE] p-3 text-left transition-all hover:bg-[#0B3B46] hover:text-[#FDE2B9] cursor-pointer"
+                onClick={() => navigate("docs", "unificar")}
+                className="block w-full py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] group cursor-pointer"
               >
-                <FileText className="h-4 w-4 text-[#BC9200]" />
-                <span className="mt-1.5 text-xs font-bold">Gerar / Dividir PDF</span>
-                <span className="font-mono text-[10px] opacity-75">Word, Texto, Fotos</span>
+                <span className="block text-sm font-semibold text-[#0B3B46] underline-offset-4 group-hover:underline">
+                  Juntar em um único PDF
+                </span>
+                <span className="mt-0.5 block text-[13px] text-[#06252C]">
+                  Unifique vários arquivos e defina a ordem das páginas.
+                </span>
               </button>
 
               <button
                 type="button"
-                onClick={() => navigate("docs", "unificar")}
-                className="flex flex-col items-start rounded-xl border-2 border-[#60011D] bg-[#60011D] p-3 text-left text-[#FDE2B9] transition-all hover:brightness-115 cursor-pointer"
+                onClick={() => navigate("docs", "pdf")}
+                className="block w-full py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] group cursor-pointer"
               >
-                <Combine className="h-4 w-4 text-[#BC9200]" />
-                <span className="mt-1.5 text-xs font-bold">Juntar em 1 PDF</span>
-                <span className="font-mono text-[10px] text-[#FDE2B9]/80">Unificar vários arquivos</span>
+                <span className="block text-sm font-semibold text-[#0B3B46] underline-offset-4 group-hover:underline">
+                  Converter ou dividir páginas
+                </span>
+                <span className="mt-0.5 block text-[13px] text-[#06252C]">
+                  Transforme entre PDF, Word, texto ou separe páginas.
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => navigate("docs", "planilhas")}
-                className="flex flex-col items-start rounded-xl border-2 border-[#0B3B46] bg-[#FFF3DE] p-3 text-left transition-all hover:bg-[#0B3B46] hover:text-[#FDE2B9] cursor-pointer"
+                className="block w-full py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] group cursor-pointer"
               >
-                <FileSpreadsheet className="h-4 w-4 text-[#BC9200]" />
-                <span className="mt-1.5 text-xs font-bold">Planilhas & Dados</span>
-                <span className="font-mono text-[10px] opacity-75">XLSX, CSV e JSON</span>
+                <span className="block text-sm font-semibold text-[#0B3B46] underline-offset-4 group-hover:underline">
+                  Converter planilhas e dados
+                </span>
+                <span className="mt-0.5 block text-[13px] text-[#06252C]">
+                  Passe tabelas entre XLSX, CSV e JSON mantendo as colunas.
+                </span>
               </button>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-2.5 border-t-2 border-[#0B3B46]/15 pt-4">
-            <button
-              type="button"
-              onClick={() => docInputRef.current?.click()}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border-2 border-[#BC9200] bg-[#0B3B46] px-5 text-xs font-bold uppercase tracking-wider text-[#FDE2B9] shadow-md hover:bg-[#0f4d5b] cursor-pointer"
-            >
-              <FileText className="h-4 w-4 text-[#BC9200]" />
-              Escolher Documentos
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("docs")}
-              className="inline-flex items-center gap-1 font-mono text-xs font-bold text-[#60011D] hover:underline cursor-pointer"
-            >
-              <span>{docs.length > 0 ? `Ver ${docs.length} doc(s)` : "Entrar"}</span>
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </motion.div>
+          {/* Botão com largura total, em Petróleo com texto em Creme */}
+          <Button
+            size="lg"
+            onClick={() =>
+              docs.length > 0 ? navigate("docs") : docInputRef.current?.click()
+            }
+            className="w-full bg-[#0B3B46] text-[#FDE2B9]"
+          >
+            {docs.length > 0 ? docCountLabel : "Escolher documentos"}
+          </Button>
+        </div>
       </div>
 
-      {/* Legenda viva das 4 cores no rodapé */}
-      <div className="relative z-10 mx-auto flex flex-wrap items-center justify-center gap-2">
-        <span className="rounded-full border border-[#BC9200] bg-[#60011D] px-3 py-1 font-mono text-[11px] font-bold text-[#FDE2B9]">
-          Bordô #60011D
-        </span>
-        <span className="rounded-full border border-[#60011D] bg-[#FDE2B9] px-3 py-1 font-mono text-[11px] font-bold text-[#60011D]">
-          Creme #FDE2B9
-        </span>
-        <span className="rounded-full border border-[#FDE2B9] bg-[#BC9200] px-3 py-1 font-mono text-[11px] font-bold text-[#FFF3DE]">
-          Dourado #BC9200
-        </span>
-        <span className="rounded-full border border-[#BC9200] bg-[#0B3B46] px-3 py-1 font-mono text-[11px] font-bold text-[#FDE2B9]">
-          Petróleo #0B3B46
-        </span>
-      </div>
+      <div />
 
-      {/* Inputs ocultos */}
       <input
         ref={photoInputRef}
         type="file"
@@ -343,22 +265,6 @@ export function Portal() {
         onChange={(e) => {
           const list = Array.from(e.target.files || []);
           if (list.length) handlePhotoFiles(list, "fotos", false);
-          e.target.value = "";
-        }}
-      />
-      <input
-        ref={folderInputRef}
-        type="file"
-        // @ts-expect-error webkitdirectory
-        webkitdirectory=""
-        directory=""
-        hidden
-        onChange={(e) => {
-          const list = Array.from(e.target.files || []);
-          if (list.length) {
-            const folder = (list[0].webkitRelativePath || list[0].name).split("/")[0];
-            handlePhotoFiles(list, folder, true);
-          }
           e.target.value = "";
         }}
       />

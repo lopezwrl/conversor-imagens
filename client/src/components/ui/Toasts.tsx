@@ -4,47 +4,34 @@ import { useToast } from "../../state/toasts";
 
 export function Toasts() {
   const { toasts, dismiss } = useToast();
+  const current = toasts.length > 0 ? toasts[toasts.length - 1] : null;
 
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed bottom-5 right-5 z-[120] flex max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed bottom-5 right-5 z-[120] max-w-sm"
     >
-      <AnimatePresence mode="popLayout">
-        {toasts.map((t) => {
-          const accentBg =
-            t.tone === "err"
-              ? "#60011D"
-              : t.tone === "ok"
-              ? "#0B3B46"
-              : "#BC9200";
-
-          return (
-            <motion.div
-              key={t.id}
-              layout
-              initial={{ opacity: 0, y: 14, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="pointer-events-auto flex items-center gap-3 rounded-lg border-2 border-[#BC9200] bg-[#FDE2B9] px-4 py-3 text-xs font-bold text-[#60011D] shadow-xl"
+      <AnimatePresence mode="wait">
+        {current && (
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.18 }}
+            className="pointer-events-auto flex items-center gap-3 rounded-[6px] border border-[#BC9200] bg-[#FDE2B9] px-4 py-2.5 text-[13px] font-medium text-[#3B0011]"
+          >
+            <p className="flex-1 leading-snug">{current.text}</p>
+            <button
+              type="button"
+              onClick={() => dismiss(current.id)}
+              aria-label="Fechar aviso"
+              className="rounded-[6px] p-0.5 text-[#60011D] hover:text-[#3B0011] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC9200] cursor-pointer"
             >
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: accentBg }}
-              />
-              <p className="flex-1 leading-snug">{t.text}</p>
-              <button
-                type="button"
-                onClick={() => dismiss(t.id)}
-                aria-label="Fechar aviso"
-                className="text-[#60011D]/70 hover:text-[#60011D] cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </motion.div>
-          );
-        })}
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

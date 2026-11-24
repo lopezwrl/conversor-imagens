@@ -34,12 +34,12 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 px-4 pt-3 pb-2 sm:px-8">
+    <header className="relative z-40 px-4 pt-4 pb-2 sm:px-8">
       <div className="mx-auto flex max-w-7xl items-center justify-center">
         {/* Barra centralizada em Creme (#FDE2B9) com borda Dourada (#BC9200) */}
         <nav
           aria-label="Navegação principal"
-          className="inline-flex items-center gap-1 rounded-full border-2 border-[#BC9200] bg-[#FDE2B9] p-1.5 shadow-xl"
+          className="inline-flex items-center gap-1 rounded-full border border-[#BC9200] bg-[#FDE2B9] p-1.5 shadow-lg"
         >
           {navItems.map((item) => {
             const active = section === item.id;
@@ -48,7 +48,7 @@ export function Header() {
                 key={item.id}
                 type="button"
                 onClick={() => navigate(item.id)}
-                className="relative flex items-center gap-2 rounded-full px-5 py-2 text-xs sm:text-sm font-bold tracking-wide transition-colors cursor-pointer"
+                className="relative flex items-center gap-2 rounded-full px-5 py-2 text-xs sm:text-sm font-bold transition-colors cursor-pointer"
                 style={{
                   color: active ? item.activeText : "#60011D",
                 }}
@@ -64,7 +64,7 @@ export function Header() {
                 <span className="relative z-10">{item.label}</span>
                 {item.count !== undefined && (
                   <span
-                    className="relative z-10 rounded-full px-2 py-0.5 font-mono text-[11px] font-bold"
+                    className="relative z-10 rounded-full px-2 py-0.5 text-[11px] font-bold"
                     style={{
                       backgroundColor: active ? "#FDE2B9" : "#0B3B46",
                       color: active ? item.activeBg : "#FDE2B9",
