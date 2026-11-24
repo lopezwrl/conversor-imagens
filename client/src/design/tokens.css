@@ -1,100 +1,64 @@
 /* ==========================================================================
-   REVELA: TOKENS DE IDENTIDADE
-   Quatro cores fundamentais:
-     Bordô    #60011D   (água de Fotos)
-     Petróleo #0B3B46   (água de Documentos)
-     Dourado  #BC9200   (correnteza, foco, indicadores)
-     Creme    #FDE2B9   (tipografia e superfície de ação)
+   REVELA: PALETA DE 4 CORES DE ALTO CONTRASTE
+   As 4 cores trabalham sempre juntas:
+     1. Bordô    #60011D
+     2. Petróleo #0B3B46
+     3. Dourado  #BC9200
+     4. Creme    #FDE2B9
    ========================================================================== */
 
 :root {
   --c-bordo: #60011d;
-  --c-bordo-deep: #1c030a;
-  --c-bordo-panel: #24050e;
-  --c-bordo-field: #2f0a16;
-  --c-bordo-hover: #3d1220;
-  --c-bordo-tint: #f4bfc2;
-
+  --c-bordo-dark: #3b0011;
   --c-petrol: #0b3b46;
-  --c-petrol-deep: #031519;
-  --c-petrol-panel: #051c22;
-  --c-petrol-field: #0a2830;
-  --c-petrol-hover: #11353f;
-  --c-petrol-tint: #9edee5;
-
+  --c-petrol-dark: #06252c;
   --c-gold: #bc9200;
-  --c-gold-bright: #dcb33f;
-  --c-gold-soft: rgba(188, 146, 0, 0.16);
-
+  --c-gold-bright: #e5b81b;
   --c-cream: #fde2b9;
-  --c-cream-soft: rgba(253, 226, 185, 0.08);
+  --c-cream-light: #fff3de;
+  --c-cream-mid: #f5d19b;
 
   --font-display: "Bodoni Moda Variable", "Bodoni MT", Georgia, serif;
   --font-sans: "Schibsted Grotesk Variable", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --r-xs: 2px;
-  --r-sm: 4px;
-  --r-md: 6px;
-  --r-lg: 10px;
-
-  --status-ok: #9fd8a8;
-  --status-warn: #dcb33f;
-  --status-err: #ffa69e;
-
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Água 01: Fotos (Bordô) */
+/* Tema Fotos: Fundo é o rio Bordô (#60011D) com correnteza Petróleo/Ouro;
+   as fichas e controles são luminosos em CREME (#FDE2B9) com texto Bordô
+   e botões de destaque em Petróleo (#0B3B46) e Dourado (#BC9200)! */
 html[data-theme="photos"] {
-  --bg-deep: #1c030a;
-  --bg-panel: rgba(36, 5, 14, 0.88);
-  --bg-panel-solid: #24050e;
-  --bg-field: #2f0a16;
-  --bg-hover: #3d1220;
+  --bg-deep: #3d0112;
+  --card-bg: #fde2b9;
+  --card-bg-elevated: #fff3de;
+  --card-bg-muted: #f4d09a;
 
-  --fg-primary: #fde2b9;
-  --fg-secondary: #d8bc98;
-  --fg-muted: #a88a72;
+  --ink-primary: #60011d;
+  --ink-secondary: #0b3b46;
+  --ink-muted: #783346;
 
-  --water-primary: #60011d;
-  --water-opposite-tint: #9edee5;
-  --action-bg: #fde2b9;
-  --action-fg: #60011d;
-  --action-hover: #fff0d6;
-
-  --accent: #bc9200;
-  --accent-bright: #dcb33f;
-  --accent-soft: rgba(188, 146, 0, 0.16);
-
-  --line: rgba(253, 226, 185, 0.14);
-  --line-strong: rgba(253, 226, 185, 0.28);
-  --line-gold: rgba(188, 146, 0, 0.45);
+  --brand-primary: #60011d;
+  --brand-opposite: #0b3b46;
+  --gold: #bc9200;
+  --cream: #fde2b9;
 }
 
-/* Água 02: Documentos (Petróleo) */
+/* Tema Documentos: Fundo é o rio Petróleo (#0B3B46) com correnteza Bordô/Ouro;
+   as fichas e controles são luminosos em CREME (#FDE2B9) com texto Petróleo
+   e botões de destaque em Bordô (#60011D) e Dourado (#BC9200)! */
 html[data-theme="docs"] {
-  --bg-deep: #031519;
-  --bg-panel: rgba(5, 28, 34, 0.88);
-  --bg-panel-solid: #051c22;
-  --bg-field: #0a2830;
-  --bg-hover: #11353f;
+  --bg-deep: #072830;
+  --card-bg: #fde2b9;
+  --card-bg-elevated: #fff3de;
+  --card-bg-muted: #f4d09a;
 
-  --fg-primary: #fde2b9;
-  --fg-secondary: #d4c9ae;
-  --fg-muted: #93a39f;
+  --ink-primary: #0b3b46;
+  --ink-secondary: #60011d;
+  --ink-muted: #2d5c66;
 
-  --water-primary: #0b3b46;
-  --water-opposite-tint: #f4bfc2;
-  --action-bg: #fde2b9;
-  --action-fg: #0b3b46;
-  --action-hover: #fff0d6;
-
-  --accent: #bc9200;
-  --accent-bright: #dcb33f;
-  --accent-soft: rgba(188, 146, 0, 0.16);
-
-  --line: rgba(253, 226, 185, 0.14);
-  --line-strong: rgba(253, 226, 185, 0.28);
-  --line-gold: rgba(188, 146, 0, 0.45);
+  --brand-primary: #0b3b46;
+  --brand-opposite: #60011d;
+  --gold: #bc9200;
+  --cream: #fde2b9;
 }

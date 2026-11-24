@@ -9,17 +9,16 @@
   html {
     font-family: var(--font-sans);
     background-color: var(--bg-deep);
-    color: var(--fg-primary);
+    color: var(--c-cream);
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
     background-color: var(--bg-deep);
-    color: var(--fg-primary);
+    color: var(--c-cream);
     overflow-x: hidden;
   }
 
@@ -33,59 +32,48 @@
   }
 
   ::selection {
-    background: var(--c-gold);
-    color: #140509;
+    background: #bc9200;
+    color: #fff3de;
   }
 }
 
-/* Padrão xadrez discreto para áreas com transparência */
+/* Padrão xadrez claro nas miniaturas com transparência */
 .checkerboard {
   background-image:
-    linear-gradient(45deg, rgba(253, 226, 185, 0.09) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(253, 226, 185, 0.09) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(253, 226, 185, 0.09) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(253, 226, 185, 0.09) 75%);
+    linear-gradient(45deg, rgba(96, 1, 29, 0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(96, 1, 29, 0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(96, 1, 29, 0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(96, 1, 29, 0.12) 75%);
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-  background-color: var(--bg-field);
+  background-color: #fff3de;
 }
 
-/* Efeito de revelação fotográfica nos resultados */
 @keyframes photoDevelop {
   0% {
-    filter: blur(8px) saturate(0.2) contrast(0.85);
-    opacity: 0.35;
+    filter: blur(8px) saturate(0.2);
+    opacity: 0.4;
   }
   100% {
-    filter: blur(0) saturate(1) contrast(1);
+    filter: blur(0) saturate(1);
     opacity: 1;
   }
 }
 
 .develop-reveal {
-  animation: photoDevelop 650ms var(--ease-out) forwards;
+  animation: photoDevelop 600ms var(--ease-out) forwards;
 }
 
-/* Scrollbar sóbria */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--line-strong);
-  border-radius: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
+  background: #bc9200;
+  border-radius: 4px;
 }

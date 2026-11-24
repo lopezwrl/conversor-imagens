@@ -253,31 +253,31 @@ export function MaskEditor({ dadosBase64, mime, nomeArquivo, onClose }: MaskEdit
         exit={{ scale: 0.96, opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[10px] border border-[var(--line-strong)] bg-[var(--bg-panel-solid)]"
+        className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] text-[#60011D] shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
+        <div className="flex items-center justify-between bg-[#60011D] px-5 py-3 text-[#FDE2B9]">
           <div className="min-w-0">
-            <h3 className="truncate font-display text-lg font-medium text-[var(--fg-primary)]">
-              Máscara: {nomeArquivo}
+            <h3 className="truncate font-display text-lg font-bold">
+              Retoque a Pincel: {nomeArquivo}
             </h3>
-            <p className="font-mono text-[10px] text-[var(--fg-muted)]">
-              Ctrl+Z desfazer · [ e ] tamanho do pincel · Espaço ou botão do meio para mover · Roda do mouse para zoom
+            <p className="font-mono text-[10px] text-[#FDE2B9]/80">
+              Ctrl+Z desfazer · [ e ] tamanho do pincel · Espaço ou botão do meio para mover · Scroll para zoom
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[4px] p-1.5 text-[var(--fg-secondary)] hover:bg-[var(--bg-field)] hover:text-[var(--fg-primary)] cursor-pointer"
+            className="rounded p-1.5 text-[#FDE2B9] hover:bg-white/15 cursor-pointer"
           >
-            <X className="h-4 w-4" strokeWidth={1.5} />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] bg-[var(--bg-deep)]/60 px-5 py-2.5">
-          <div className="flex items-center gap-1 rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-0.5">
+        <div className="flex flex-wrap items-center gap-3 border-b-2 border-[#BC9200] bg-[#FFF3DE] px-5 py-2.5">
+          <div className="flex items-center gap-1 rounded-lg border-2 border-[#60011D]/20 bg-[#FDE2B9] p-1">
             {(
               [
-                { id: "remover", label: "Remover", icon: Eraser },
+                { id: "remover", label: "Apagar", icon: Eraser },
                 { id: "restaurar", label: "Restaurar", icon: Paintbrush },
                 { id: "mover", label: "Mover", icon: Hand },
               ] as const
@@ -286,61 +286,61 @@ export function MaskEditor({ dadosBase64, mime, nomeArquivo, onClose }: MaskEdit
                 key={id}
                 type="button"
                 onClick={() => setTool(id)}
-                className={`inline-flex items-center gap-1.5 rounded-[3px] px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
                   tool === id
-                    ? "bg-[var(--action-bg)] font-semibold text-[var(--action-fg)]"
-                    : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                    ? "bg-[#60011D] text-[#FDE2B9]"
+                    : "text-[#60011D] hover:bg-[#60011D]/10"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <Icon className="h-3.5 w-3.5" />
                 {label}
               </button>
             ))}
           </div>
 
-          <label className="flex items-center gap-2 font-mono text-[11px] text-[var(--fg-secondary)]">
-            Pincel <span className="text-[var(--fg-primary)]">{brushSize}px</span>
+          <label className="flex items-center gap-2 font-mono text-xs font-bold text-[#60011D]">
+            Pincel <span>{brushSize}px</span>
             <input
               type="range"
               min={4}
               max={160}
               value={brushSize}
               onChange={(e) => setBrushSize(Number(e.target.value))}
-              className="w-24 accent-[var(--accent)]"
+              className="w-24 accent-[#60011D]"
             />
           </label>
 
-          <label className="flex items-center gap-2 font-mono text-[11px] text-[var(--fg-secondary)]">
-            Suavidade <span className="text-[var(--fg-primary)]">{softness}%</span>
+          <label className="flex items-center gap-2 font-mono text-xs font-bold text-[#60011D]">
+            Suavidade <span>{softness}%</span>
             <input
               type="range"
               min={0}
               max={100}
               value={softness}
               onChange={(e) => setSoftness(Number(e.target.value))}
-              className="w-20 accent-[var(--accent)]"
+              className="w-20 accent-[#60011D]"
             />
           </label>
 
-          <div className="flex items-center gap-1 rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-0.5">
+          <div className="flex items-center gap-1 rounded-lg border border-[#BC9200] bg-[#FDE2B9] p-1">
             <button
               type="button"
               onClick={() => setZoom((z) => Math.max(0.15, +(z - 0.15).toFixed(2)))}
-              className="p-1 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] cursor-pointer"
+              className="p-1 text-[#60011D] cursor-pointer"
               aria-label="Diminuir zoom"
             >
-              <ZoomOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <ZoomOut className="h-3.5 w-3.5" />
             </button>
-            <span className="min-w-11 text-center font-mono text-[11px] text-[var(--fg-primary)]">
+            <span className="min-w-11 text-center font-mono text-xs font-bold text-[#60011D]">
               {Math.round(zoom * 100)}%
             </span>
             <button
               type="button"
               onClick={() => setZoom((z) => Math.min(4, +(z + 0.15).toFixed(2)))}
-              className="p-1 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] cursor-pointer"
+              className="p-1 text-[#60011D] cursor-pointer"
               aria-label="Aumentar zoom"
             >
-              <ZoomIn className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <ZoomIn className="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -349,23 +349,23 @@ export function MaskEditor({ dadosBase64, mime, nomeArquivo, onClose }: MaskEdit
               type="button"
               disabled={!canUndo}
               onClick={handleUndo}
-              className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-1.5 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-35 cursor-pointer"
+              className="rounded-lg border border-[#BC9200] bg-[#FDE2B9] p-1.5 text-[#60011D] disabled:opacity-35 cursor-pointer"
               title="Desfazer (Ctrl+Z)"
             >
-              <Undo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <Undo2 className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               disabled={!canRedo}
               onClick={handleRedo}
-              className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-1.5 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-35 cursor-pointer"
+              className="rounded-lg border border-[#BC9200] bg-[#FDE2B9] p-1.5 text-[#60011D] disabled:opacity-35 cursor-pointer"
               title="Refazer (Ctrl+Y)"
             >
-              <Redo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <Redo2 className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <div className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-[var(--fg-muted)]">
+          <div className="ml-auto flex items-center gap-1.5 font-mono text-xs font-bold text-[#60011D]">
             <span>Fundo:</span>
             {(
               [
@@ -380,20 +380,18 @@ export function MaskEditor({ dadosBase64, mime, nomeArquivo, onClose }: MaskEdit
                 type="button"
                 title={bg.title}
                 onClick={() => setBgPreview(bg.id)}
-                className={`h-4 w-4 rounded-[2px] border cursor-pointer ${bg.cls} ${
-                  bgPreview === bg.id
-                    ? "border-[var(--accent-bright)] ring-1 ring-[var(--accent-bright)]"
-                    : "border-[var(--line-strong)]"
+                className={`h-5 w-5 rounded border-2 cursor-pointer ${bg.cls} ${
+                  bgPreview === bg.id ? "border-[#BC9200] scale-110" : "border-[#60011D]/30"
                 }`}
               />
             ))}
           </div>
         </div>
 
-        <div ref={scrollRef} className="relative flex flex-1 overflow-auto bg-black/35 p-6 min-h-[300px]">
+        <div ref={scrollRef} className="relative flex flex-1 overflow-auto bg-[#0B3B46]/90 p-6 min-h-[300px]">
           <div
             style={bgStyle}
-            className={`relative m-auto inline-block leading-none ${
+            className={`relative m-auto inline-block leading-none shadow-2xl ${
               bgPreview === "checker" ? "checkerboard" : ""
             }`}
           >
@@ -459,21 +457,21 @@ export function MaskEditor({ dadosBase64, mime, nomeArquivo, onClose }: MaskEdit
                   top: cursorPos.y,
                   width: Math.max(6, brushSize * zoom),
                   height: Math.max(6, brushSize * zoom),
-                  borderColor: tool === "remover" ? "#ffa69e" : "#9fd8a8",
+                  borderColor: tool === "remover" ? "#60011D" : "#0B3B46",
                 }}
-                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border"
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-[#BC9200]/20"
               />
             )}
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2.5 border-t border-[var(--line)] px-5 py-3">
+        <div className="flex items-center justify-end gap-2.5 border-t-2 border-[#BC9200] bg-[#FFF3DE] px-5 py-3">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm}>
-            <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
-            Confirmar e baixar PNG
+          <Button variant="opposite" onClick={handleConfirm}>
+            <Download className="h-3.5 w-3.5" />
+            Salvar e Baixar PNG
           </Button>
         </div>
       </motion.div>

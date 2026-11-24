@@ -3,6 +3,8 @@ import type { SectionId, WaterTheme } from "../types/shared";
 
 interface SectionContextValue {
   section: SectionId;
+  activeRouteAction: string | null;
+  navigate: (next: SectionId, action?: string | null) => void;
   setSection: (next: SectionId) => void;
   waterTheme: WaterTheme;
   portalHover: WaterTheme | null;
@@ -13,17 +15,27 @@ interface SectionContextValue {
 
 const SectionContext = createContext<SectionContextValue | null>(null);
 
-function readInitialSection(): SectionId {
-  const hash = window.location.hash.replace(/^#\/?/, "");
-  if (hash === "fotos" || hash === "photos") return "photos";
-  if (hash === "documentos" || hash === "docs") return "docs";
-  return "portal";
+function parseLocationHash(): { section: SectionId; action: string | null } {
+  const raw = window.location.hash.replace(/^#\/?/, "");
+  const [pathPart, queryPart] = raw.split("?");
+  const params = new URLSearchParams(queryPart || "");
+  const action = params.get("acao");
+
+  if (pathPart === "fotos" || pathPart === "photos") {
+    return { section: "photos", action };
+  }
+  if (pathPart === "documentos" || pathPart === "docs") {
+    return { section: "docs", action };
+  }
+  return { section: "portal", action: null };
 }
 
 export function SectionProvider({ children }: { children: React.ReactNode }) {
-  const [section, setSectionState] = useState<SectionId>(readInitialSection);
+  const initial = parseLocationHash();
+  const [section, setSectionState] = useState<SectionId>(initial.section);
+  const [activeRouteAction, setActiveRouteAction] = useState<string | null>(initial.action);
   const [lastWater, setLastWater] = useState<WaterTheme>(() =>
-    readInitialSection() === "docs" ? "docs" : "photos"
+    initial.section === "docs" ? "docs" : "photos"
   );
   const [portalHover, setPortalHover] = useState<WaterTheme | null>(null);
   const [portalDrag, setPortalDrag] = useState<WaterTheme | null>(null);
@@ -35,25 +47,37 @@ export function SectionProvider({ children }: { children: React.ReactNode }) {
       ? "photos"
       : portalDrag || portalHover || lastWater;
 
-  const setSection = useCallback((next: SectionId) => {
+  const navigate = useCallback((next: SectionId, action: string | null = null) => {
     setSectionState(next);
+    setActiveRouteAction(action);
     if (next === "photos" || next === "docs") {
       setLastWater(next);
     }
     setPortalHover(null);
     setPortalDrag(null);
-    const hash = next === "photos" ? "#/fotos" : next === "docs" ? "#/documentos" : "#/";
+    const base = next === "photos" ? "#/fotos" : next === "docs" ? "#/documentos" : "#/";
+    const hash = action ? `${base}?acao=${encodeURIComponent(action)}` : base;
     if (window.location.hash !== hash) {
       window.history.pushState(null, "", hash);
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const setSection = useCallback(
+    (next: SectionId) => {
+      navigate(next, null);
+    },
+    [navigate]
+  );
+
   useEffect(() => {
     const onHash = () => {
-      const s = readInitialSection();
-      setSectionState(s);
-      if (s === "photos" || s === "docs") setLastWater(s);
+      const parsed = parseLocationHash();
+      setSectionState(parsed.section);
+      setActiveRouteAction(parsed.action);
+      if (parsed.section === "photos" || parsed.section === "docs") {
+        setLastWater(parsed.section);
+      }
     };
     window.addEventListener("popstate", onHash);
     window.addEventListener("hashchange", onHash);
@@ -71,6 +95,8 @@ export function SectionProvider({ children }: { children: React.ReactNode }) {
     <SectionContext.Provider
       value={{
         section,
+        activeRouteAction,
+        navigate,
         setSection,
         waterTheme,
         portalHover,

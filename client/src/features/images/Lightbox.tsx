@@ -24,32 +24,33 @@ export function Lightbox({ src, title, meta, onClose }: LightboxProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-[105] flex items-center justify-center bg-black/85 p-4"
+      className="fixed inset-0 z-[105] flex items-center justify-center bg-black/80 p-4"
     >
       <motion.div
-        initial={{ scale: 0.96, opacity: 0 }}
+        initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.96, opacity: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.18 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[90vh] max-w-4xl flex-col overflow-hidden rounded-[10px] border border-[var(--line-strong)] bg-[var(--bg-panel-solid)]"
+        className="relative flex max-h-[90vh] max-w-4xl flex-col overflow-hidden rounded-2xl border-2 border-[#BC9200] bg-[#FDE2B9] text-[#60011D] shadow-2xl"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar visualização"
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-[4px] border border-[var(--line)] bg-[var(--bg-deep)] text-[var(--fg-primary)] hover:border-[var(--accent)] cursor-pointer"
-        >
-          <X className="h-4 w-4" strokeWidth={1.5} />
-        </button>
-
-        <div className="checkerboard flex max-h-[76vh] items-center justify-center overflow-hidden p-4">
-          <img src={src} alt={title} className="max-h-[72vh] w-auto max-w-full object-contain" />
+        <div className="flex items-center justify-between bg-[#60011D] px-4 py-2.5 text-[#FDE2B9]">
+          <span className="truncate font-mono text-xs font-bold">{title}</span>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs text-[#BC9200]">{meta}</span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar visualização"
+              className="rounded p-1 text-[#FDE2B9] hover:bg-white/15 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 border-t border-[var(--line)] px-4 py-2.5">
-          <span className="truncate font-mono text-xs text-[var(--fg-primary)]">{title}</span>
-          <span className="shrink-0 font-mono text-xs text-[var(--fg-secondary)]">{meta}</span>
+        <div className="checkerboard flex max-h-[78vh] items-center justify-center overflow-hidden p-4">
+          <img src={src} alt={title} className="max-h-[72vh] w-auto max-w-full object-contain" />
         </div>
       </motion.div>
     </motion.div>

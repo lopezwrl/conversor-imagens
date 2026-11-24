@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "opposite" | "gold" | "secondary" | "danger";
   size?: "sm" | "md" | "lg";
   children: React.ReactNode;
 }
@@ -16,25 +16,27 @@ export function Button({
 }: ButtonProps) {
   const sizeClass =
     size === "lg"
-      ? "h-11 px-6 text-sm gap-2.5"
+      ? "h-12 px-7 text-sm gap-2.5"
       : size === "sm"
-      ? "h-8 px-3 text-xs gap-1.5"
-      : "h-9 px-4 text-xs gap-2";
+      ? "h-8 px-3.5 text-xs gap-1.5"
+      : "h-10 px-4 text-xs gap-2";
 
   const variantClass =
     variant === "primary"
-      ? "bg-[var(--action-bg)] text-[var(--action-fg)] hover:bg-[var(--action-hover)] border border-transparent font-semibold"
-      : variant === "secondary"
-      ? "bg-[var(--bg-field)] text-[var(--fg-primary)] border border-[var(--line-strong)] hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] font-medium"
+      ? "bg-[var(--brand-primary)] text-[#FDE2B9] border-2 border-[#BC9200] hover:brightness-115 font-bold shadow-md"
+      : variant === "opposite"
+      ? "bg-[var(--brand-opposite)] text-[#FDE2B9] border-2 border-[#BC9200] hover:brightness-115 font-bold shadow-md"
+      : variant === "gold"
+      ? "bg-[#BC9200] text-[#FFF3DE] border-2 border-[#60011D] hover:bg-[#d1a300] font-bold"
       : variant === "danger"
-      ? "bg-transparent text-[var(--status-err)] border border-[var(--status-err)]/35 hover:bg-[var(--status-err)]/10 font-medium"
-      : "bg-transparent text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--c-cream-soft)] border border-transparent font-medium";
+      ? "bg-[#60011D] text-[#FDE2B9] border border-[#BC9200] hover:bg-[#7d0428] font-semibold"
+      : "bg-[#FFF3DE] text-[var(--ink-primary)] border-2 border-[var(--ink-primary)]/30 hover:border-[#BC9200] font-semibold";
 
   return (
     <button
       type={rest.type || "button"}
       disabled={disabled}
-      className={`inline-flex items-center justify-center rounded-[4px] tracking-wide transition-colors duration-150 cursor-pointer select-none disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)] ${sizeClass} ${variantClass} ${className}`}
+      className={`inline-flex items-center justify-center rounded-lg tracking-wide transition-all duration-150 cursor-pointer select-none disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98] ${sizeClass} ${variantClass} ${className}`}
       {...rest}
     >
       {children}
