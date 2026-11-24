@@ -11,9 +11,10 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { downloadBlob } from "../../services/api";
+import { triggerDownload } from "../../lib/download";
+import { Button } from "../../components/ui/Button";
 
-interface MaskEditorModalProps {
+interface MaskEditorProps {
   dadosBase64: string;
   mime: string;
   nomeArquivo: string;
@@ -23,7 +24,7 @@ interface MaskEditorModalProps {
 type Tool = "remover" | "restaurar" | "mover";
 type BgPreview = "checker" | "white" | "black" | "bordo";
 
-export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: MaskEditorModalProps) {
+export function MaskEditor({ dadosBase64, mime, nomeArquivo, onClose }: MaskEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +42,7 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
 
   const [tool, setTool] = useState<Tool>("remover");
   const [brushSize, setBrushSize] = useState(32);
-  const [softness, setSoftness] = useState(35); // 0 = duro, 100 = muito suave
+  const [softness, setSoftness] = useState(35);
   const [zoom, setZoom] = useState(1);
   const [bgPreview, setBgPreview] = useState<BgPreview>("checker");
   const [canUndo, setCanUndo] = useState(false);
@@ -73,7 +74,6 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
     ctx.putImageData(frame, 0, 0);
   }, []);
 
-  // Carrega imagem inicial para o canvas
   useEffect(() => {
     const img = new Image();
     img.onload = () => {
@@ -134,7 +134,6 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
     renderCanvas();
   }, [renderCanvas]);
 
-  // Atalhos de teclado: Ctrl+Z, Ctrl+Y, [, ], Espaço, Esc
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -173,7 +172,7 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
     const x1 = Math.min(w - 1, Math.ceil(cx + radius));
     const y0 = Math.max(0, Math.floor(cy - radius));
     const y1 = Math.min(h - 1, Math.ceil(cy + radius));
-    const featherFrac = softness / 100; // 0 = duro, 1 = suave
+    const featherFrac = softness / 100;
     const innerR = radius * (1 - featherFrac * 0.75);
 
     for (let y = y0; y <= y1; y++) {
@@ -225,7 +224,7 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
     canvas.toBlob((blob) => {
       if (!blob) return;
       const outName = nomeArquivo.replace(/\.[^.]+$/, "") + ".png";
-      downloadBlob(blob, outName);
+      triggerDownload(blob, outName);
       onClose();
     }, "image/png");
   };
@@ -245,40 +244,37 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md sm:p-6"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 sm:p-6"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.94, opacity: 0, y: 12 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl"
+        className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[10px] border border-[var(--line-strong)] bg-[var(--bg-panel-solid)]"
       >
-        {/* Cabeçalho */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5">
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
           <div className="min-w-0">
-            <h3 className="truncate font-display text-lg font-bold text-[var(--text-primary)]">
-              Editor de Máscara — {nomeArquivo}
+            <h3 className="truncate font-display text-lg font-medium text-[var(--fg-primary)]">
+              Máscara: {nomeArquivo}
             </h3>
-            <p className="text-[11px] text-[var(--text-muted)]">
-              Atalhos: <span className="font-mono">Ctrl+Z</span> desfazer · <span className="font-mono">[ / ]</span> pincel ·{" "}
-              <span className="font-mono">Espaço</span> ou botão do meio para mover · Scroll para zoom
+            <p className="font-mono text-[10px] text-[var(--fg-muted)]">
+              Ctrl+Z desfazer · [ e ] tamanho do pincel · Espaço ou botão do meio para mover · Roda do mouse para zoom
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] cursor-pointer"
+            className="rounded-[4px] p-1.5 text-[var(--fg-secondary)] hover:bg-[var(--bg-field)] hover:text-[var(--fg-primary)] cursor-pointer"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </div>
 
-        {/* Barra de Ferramentas */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-surface)]/70 px-5 py-3">
-          <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] bg-[var(--bg-deep)]/60 px-5 py-2.5">
+          <div className="flex items-center gap-1 rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-0.5">
             {(
               [
                 { id: "remover", label: "Remover", icon: Eraser },
@@ -290,20 +286,20 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
                 key={id}
                 type="button"
                 onClick={() => setTool(id)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-[3px] px-2.5 py-1 text-xs transition-colors cursor-pointer ${
                   tool === id
-                    ? "bg-[var(--brand)] text-[var(--brand-foreground)]"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    ? "bg-[var(--action-bg)] font-semibold text-[var(--action-fg)]"
+                    : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {label}
               </button>
             ))}
           </div>
 
-          <label className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
-            Pincel <span className="font-mono text-[11px] text-[var(--accent-text)]">{brushSize}px</span>
+          <label className="flex items-center gap-2 font-mono text-[11px] text-[var(--fg-secondary)]">
+            Pincel <span className="text-[var(--fg-primary)]">{brushSize}px</span>
             <input
               type="range"
               min={4}
@@ -314,8 +310,8 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
             />
           </label>
 
-          <label className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
-            Suavidade <span className="font-mono text-[11px] text-[var(--accent-text)]">{softness}%</span>
+          <label className="flex items-center gap-2 font-mono text-[11px] text-[var(--fg-secondary)]">
+            Suavidade <span className="text-[var(--fg-primary)]">{softness}%</span>
             <input
               type="range"
               min={0}
@@ -326,53 +322,50 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
             />
           </label>
 
-          {/* Zoom */}
-          <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
+          <div className="flex items-center gap-1 rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-0.5">
             <button
               type="button"
               onClick={() => setZoom((z) => Math.max(0.15, +(z - 0.15).toFixed(2)))}
-              className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] cursor-pointer"
+              className="p-1 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] cursor-pointer"
               aria-label="Diminuir zoom"
             >
-              <ZoomOut className="h-3.5 w-3.5" />
+              <ZoomOut className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
-            <span className="min-w-12 text-center font-mono text-[11px] font-semibold text-[var(--text-primary)]">
+            <span className="min-w-11 text-center font-mono text-[11px] text-[var(--fg-primary)]">
               {Math.round(zoom * 100)}%
             </span>
             <button
               type="button"
               onClick={() => setZoom((z) => Math.min(4, +(z + 0.15).toFixed(2)))}
-              className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] cursor-pointer"
+              className="p-1 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] cursor-pointer"
               aria-label="Aumentar zoom"
             >
-              <ZoomIn className="h-3.5 w-3.5" />
+              <ZoomIn className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
           </div>
 
-          {/* Undo/Redo */}
           <div className="flex items-center gap-1">
             <button
               type="button"
               disabled={!canUndo}
               onClick={handleUndo}
-              className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 cursor-pointer"
+              className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-1.5 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-35 cursor-pointer"
               title="Desfazer (Ctrl+Z)"
             >
-              <Undo2 className="h-3.5 w-3.5" />
+              <Undo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
             <button
               type="button"
               disabled={!canRedo}
               onClick={handleRedo}
-              className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 cursor-pointer"
+              className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-1.5 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-35 cursor-pointer"
               title="Refazer (Ctrl+Y)"
             >
-              <Redo2 className="h-3.5 w-3.5" />
+              <Redo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
           </div>
 
-          {/* Preview de fundo para checar halo */}
-          <div className="ml-auto flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+          <div className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-[var(--fg-muted)]">
             <span>Fundo:</span>
             {(
               [
@@ -387,19 +380,22 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
                 type="button"
                 title={bg.title}
                 onClick={() => setBgPreview(bg.id)}
-                className={`h-5 w-5 rounded-full border cursor-pointer ${bg.cls} ${
-                  bgPreview === bg.id ? "ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg-surface)]" : "border-[var(--border-strong)]"
+                className={`h-4 w-4 rounded-[2px] border cursor-pointer ${bg.cls} ${
+                  bgPreview === bg.id
+                    ? "border-[var(--accent-bright)] ring-1 ring-[var(--accent-bright)]"
+                    : "border-[var(--line-strong)]"
                 }`}
               />
             ))}
           </div>
         </div>
 
-        {/* Área do Canvas */}
-        <div ref={scrollRef} className="relative flex flex-1 overflow-auto bg-black/20 p-6 min-h-[300px]">
+        <div ref={scrollRef} className="relative flex flex-1 overflow-auto bg-black/35 p-6 min-h-[300px]">
           <div
             style={bgStyle}
-            className={`relative m-auto inline-block leading-none shadow-2xl ${bgPreview === "checker" ? "checkerboard" : ""}`}
+            className={`relative m-auto inline-block leading-none ${
+              bgPreview === "checker" ? "checkerboard" : ""
+            }`}
           >
             <canvas
               ref={canvasRef}
@@ -411,7 +407,9 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
               className="block touch-none"
               onWheel={(e) => {
                 e.preventDefault();
-                setZoom((z) => Math.min(4, Math.max(0.15, +(z + (e.deltaY < 0 ? 0.1 : -0.1)).toFixed(2))));
+                setZoom((z) =>
+                  Math.min(4, Math.max(0.15, +(z + (e.deltaY < 0 ? 0.1 : -0.1)).toFixed(2)))
+                );
               }}
               onPointerDown={(e) => {
                 e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -454,7 +452,6 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
               onPointerLeave={() => setCursorPos((c) => ({ ...c, visible: false }))}
             />
 
-            {/* Cursor circular proporcional ao pincel e ao zoom */}
             {cursorPos.visible && tool !== "mover" && !spaceDownRef.current && (
               <div
                 style={{
@@ -462,32 +459,22 @@ export function MaskEditorModal({ dadosBase64, mime, nomeArquivo, onClose }: Mas
                   top: cursorPos.y,
                   width: Math.max(6, brushSize * zoom),
                   height: Math.max(6, brushSize * zoom),
-                  borderColor: tool === "remover" ? "#fb7185" : "#34d399",
+                  borderColor: tool === "remover" ? "#ffa69e" : "#9fd8a8",
                 }}
-                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-[0_0_0_1px_rgba(0,0,0,0.65)]"
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border"
               />
             )}
           </div>
         </div>
 
-        {/* Rodapé */}
-        <div className="flex items-center justify-end gap-2.5 border-t border-[var(--border)] px-5 py-3.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] cursor-pointer"
-          >
+        <div className="flex items-center justify-end gap-2.5 border-t border-[var(--line)] px-5 py-3">
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="inline-flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold cursor-pointer"
-            style={{ background: "var(--brand)", color: "var(--brand-foreground)" }}
-          >
-            <Download className="h-4 w-4" />
+          </Button>
+          <Button onClick={handleConfirm}>
+            <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
             Confirmar e baixar PNG
-          </button>
+          </Button>
         </div>
       </motion.div>
     </motion.div>

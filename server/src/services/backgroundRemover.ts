@@ -737,7 +737,7 @@ export async function removerFundoImagem(
     const fundoSeguro = floodFillFundoLab(L, A, B, grad, workW, workH, clusters, toleranciaBase * 0.45, limiarBorda * 0.7);
     objMask = new Uint8Array(n);
     for (let i = 0; i < n; i++) objMask[i] = fundoSeguro[i] === 0 ? 255 : 0;
-    aviso = "Fundo muito próximo da cor do objeto — aplicamos recorte conservador para preservar o produto.";
+    aviso = "Fundo muito próximo da cor do objeto: aplicamos recorte conservador para preservar o produto.";
   }
 
   // Limpa fragmentos isolados e fecha buracos internos (ex.: interior de letras no rótulo)
