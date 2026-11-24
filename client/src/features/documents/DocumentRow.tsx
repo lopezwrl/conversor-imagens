@@ -4,7 +4,7 @@ import type { DocOutputFormat, DocRecord } from "../../types/document";
 import type { BatchRenameRule } from "../../types/shared";
 import { DOC_FORMAT_EXT, getDocFormatLabel, getTargetDocFormats } from "../../lib/formats";
 import { formatBytes, resolveOutputBaseName } from "../../lib/naming";
-import { Input, Label, Select } from "../../components/ui/Field";
+import { Input, Select } from "../../components/ui/Field";
 
 interface DocumentRowProps {
   item: DocRecord;
@@ -20,6 +20,10 @@ interface DocumentRowProps {
   onDropIndex: (idx: number) => void;
 }
 
+/**
+ * Linha de Pauta Editorial Horizontal:
+ * Diferencia visualmente e ergonomicamente a seção de Documentos da seção de Fotos.
+ */
 export function DocumentRow({
   item,
   index,
@@ -36,7 +40,7 @@ export function DocumentRow({
   const targets = getTargetDocFormats(item.extensao);
   const outBase = resolveOutputBaseName(item.nomeBase, item.nomePersonalizado, index, renameRule);
   const outLabel = mergePdfMode
-    ? `Parte ${index + 1} em ${mergedPdfName || "unificado"}.pdf`
+    ? `Cap. ${String(index + 1).padStart(2, "0")} → ${mergedPdfName || "unificado"}.pdf`
     : `${outBase}.${DOC_FORMAT_EXT[item.formato]}`;
 
   const isPdfInput = item.extensao === "pdf";
@@ -48,111 +52,71 @@ export function DocumentRow({
       onDragStart={() => onDragStartIndex(index)}
       onDragOver={(e: React.DragEvent) => e.preventDefault()}
       onDrop={() => onDropIndex(index)}
-      className="flex flex-col justify-between rounded-[6px] border border-[var(--line)] bg-[var(--bg-panel)] transition-colors hover:border-[var(--line-strong)]"
+      className="grid grid-cols-1 gap-3 border-b border-[var(--line)] bg-[#04181D]/90 px-4 py-3.5 transition-colors hover:bg-[#072229] lg:grid-cols-[auto_1.4fr_1.6fr_auto] lg:items-center"
     >
-      {/* Topo do cartão */}
-      <div className="flex items-start justify-between gap-2 border-b border-[var(--line)] px-3.5 py-3">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          {total > 1 && (
-            <span
-              title="Arraste para reordenar"
-              className="mt-0.5 cursor-grab text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
-            >
-              <GripVertical className="h-4 w-4" strokeWidth={1.5} />
-            </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 font-mono text-[10px]">
-              <span className="text-[var(--fg-muted)]">{String(index + 1).padStart(2, "0")}</span>
-              <span className="rounded-[2px] border border-[var(--line-strong)] bg-[var(--bg-field)] px-1.5 py-0.2 uppercase text-[var(--fg-primary)]">
-                {item.extensao || "doc"}
-              </span>
-              <span className="text-[var(--fg-muted)]">{formatBytes(item.tamanhoBytes)}</span>
-            </div>
-            <p className="mt-1 truncate font-mono text-xs text-[var(--fg-primary)]" title={item.nome}>
-              {item.nome}
-            </p>
-            <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--accent-bright)]">
-              {outLabel}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1">
-          {total > 1 && (
-            <>
-              <button
-                type="button"
-                disabled={index === 0}
-                onClick={() => onMove(index, index - 1)}
-                aria-label="Mover para cima"
-                className="flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] bg-[var(--bg-field)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-30 cursor-pointer"
-              >
-                <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
-              </button>
-              <button
-                type="button"
-                disabled={index === total - 1}
-                onClick={() => onMove(index, index + 1)}
-                aria-label="Mover para baixo"
-                className="flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] bg-[var(--bg-field)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-30 cursor-pointer"
-              >
-                <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => onRemove(item.id)}
-            aria-label="Remover documento"
-            className="flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] bg-[var(--bg-field)] text-[var(--fg-secondary)] hover:text-[var(--status-err)] cursor-pointer"
+      {/* Coluna 1: Índice da pauta + alça + tipo */}
+      <div className="flex items-center gap-3">
+        {total > 1 && (
+          <span
+            title="Arraste para reordenar na pauta"
+            className="cursor-grab text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
           >
-            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-        </div>
+            <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+          </span>
+        )}
+        <span className="font-mono text-xs font-semibold text-[#F4BFC2]">
+          {String(index + 1).padStart(3, "0")}
+        </span>
+        <span className="min-w-[48px] border border-[var(--line-strong)] bg-[#031317] px-2 py-0.5 text-center font-mono text-[10px] uppercase tracking-wider text-[var(--fg-primary)]">
+          {item.extensao || "doc"}
+        </span>
       </div>
 
-      {item.previewUrl && (
-        <div className="h-24 w-full overflow-hidden border-b border-[var(--line)] bg-[var(--bg-deep)]">
-          <img src={item.previewUrl} alt={item.nome} className="h-full w-full object-contain" />
+      {/* Coluna 2: Arquivo original -> Nome de saída */}
+      <div className="min-w-0 pr-2">
+        <div className="flex items-baseline gap-2">
+          <p className="truncate font-mono text-xs text-[var(--fg-primary)]" title={item.nome}>
+            {item.nome}
+          </p>
+          <span className="shrink-0 font-mono text-[10px] text-[var(--fg-muted)]">
+            {formatBytes(item.tamanhoBytes)}
+          </span>
         </div>
-      )}
+        <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--accent-bright)]">
+          Saída: {outLabel}
+        </p>
+      </div>
 
-      {/* Controles */}
-      <div className="grid grid-cols-2 gap-2.5 p-3.5">
+      {/* Coluna 3: Controles inline da pauta */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {!mergePdfMode && (
           <>
-            <div className="col-span-2">
-              <div className="mb-1 flex items-center justify-between">
-                <Label className="mb-0">
-                  Nome de saída {item.nomePersonalizado !== null ? "(manual)" : ""}
-                </Label>
-                {item.nomePersonalizado !== null && (
-                  <button
-                    type="button"
-                    onClick={() => onUpdate(item.id, { nomePersonalizado: null })}
-                    className="inline-flex items-center gap-1 font-mono text-[10px] text-[var(--accent-bright)] hover:underline cursor-pointer"
-                  >
-                    <RotateCcw className="h-2.5 w-2.5" strokeWidth={1.5} />
-                    Usar lote
-                  </button>
-                )}
-              </div>
+            <div className="relative">
               <Input
                 type="text"
                 className="font-mono"
                 value={item.nomePersonalizado ?? ""}
                 placeholder={outBase}
+                title="Nome de saída individual"
                 onChange={(e) =>
                   onUpdate(item.id, {
                     nomePersonalizado: e.target.value === "" ? null : e.target.value,
                   })
                 }
               />
+              {item.nomePersonalizado !== null && (
+                <button
+                  type="button"
+                  onClick={() => onUpdate(item.id, { nomePersonalizado: null })}
+                  title="Voltar ao nome do lote"
+                  className="absolute right-2 top-2.5 text-[var(--accent-bright)] cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
+              )}
             </div>
 
-            <div className="col-span-2">
-              <Label>Formato de saída</Label>
+            <div>
               <Select
                 value={item.formato}
                 onChange={(e) =>
@@ -169,22 +133,19 @@ export function DocumentRow({
           </>
         )}
 
-        {isPdfInput && outputsPdf && (
-          <>
-            <div>
-              <Label>Intervalo de páginas</Label>
+        {/* Parâmetro contextual (páginas/rotação/folha/delimitador) */}
+        <div className="flex items-center gap-1.5">
+          {isPdfInput && outputsPdf && (
+            <>
               <Input
                 type="text"
-                placeholder="Todas (ex: 1-3, 5)"
+                placeholder="Págs (1-3, 5)"
                 className="font-mono"
                 value={item.intervaloPaginas}
                 onChange={(e) => onUpdate(item.id, { intervaloPaginas: e.target.value })}
               />
-            </div>
-            <div>
-              <Label>Rotação</Label>
               <Select
-                className="font-mono"
+                className="w-24 shrink-0 font-mono"
                 value={item.rotacao}
                 onChange={(e) =>
                   onUpdate(item.id, {
@@ -193,18 +154,15 @@ export function DocumentRow({
                 }
               >
                 <option value={0}>0°</option>
-                <option value={90}>90° horário</option>
+                <option value={90}>90°</option>
                 <option value={180}>180°</option>
                 <option value={270}>270°</option>
               </Select>
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {!isPdfInput && outputsPdf && (
-          <>
-            <div>
-              <Label>Folha</Label>
+          {!isPdfInput && outputsPdf && (
+            <>
               <Select
                 value={item.tamanhoPagina}
                 onChange={(e) =>
@@ -213,13 +171,10 @@ export function DocumentRow({
                   })
                 }
               >
-                <option value="A4">A4</option>
+                <option value="A4">Folha A4</option>
                 <option value="LETTER">Carta</option>
-                {item.previewUrl && <option value="AUTO">Dimensão da imagem</option>}
+                {item.previewUrl && <option value="AUTO">Original</option>}
               </Select>
-            </div>
-            <div>
-              <Label>Orientação</Label>
               <Select
                 value={item.orientacao}
                 onChange={(e) =>
@@ -231,24 +186,55 @@ export function DocumentRow({
                 <option value="portrait">Retrato</option>
                 <option value="landscape">Paisagem</option>
               </Select>
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {!mergePdfMode && item.formato === "CSV" && (
-          <div className="col-span-2">
-            <Label>Delimitador CSV</Label>
+          {!mergePdfMode && item.formato === "CSV" && (
             <Select
               value={item.delimitadorCsv}
               onChange={(e) =>
                 onUpdate(item.id, { delimitadorCsv: e.target.value as "," | ";" })
               }
             >
-              <option value=";">Ponto e vírgula (;) para Excel em português</option>
-              <option value=",">Vírgula (,)</option>
+              <option value=";">CSV (;)</option>
+              <option value=",">CSV (,)</option>
             </Select>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {/* Coluna 4: Ações de ordem e remoção */}
+      <div className="flex items-center justify-end gap-1">
+        {total > 1 && (
+          <>
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() => onMove(index, index - 1)}
+              aria-label="Subir na pauta"
+              className="flex h-7 w-7 items-center justify-center border border-[var(--line)] bg-[#031317] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-30 cursor-pointer"
+            >
+              <ArrowUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              disabled={index === total - 1}
+              onClick={() => onMove(index, index + 1)}
+              aria-label="Descer na pauta"
+              className="flex h-7 w-7 items-center justify-center border border-[var(--line)] bg-[#031317] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] disabled:opacity-30 cursor-pointer"
+            >
+              <ArrowDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+          </>
         )}
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          aria-label="Remover da pauta"
+          className="flex h-7 w-7 items-center justify-center border border-[var(--line)] bg-[#031317] text-[var(--fg-secondary)] hover:border-[var(--status-err)] hover:text-[var(--status-err)] cursor-pointer"
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
       </div>
     </article>
   );

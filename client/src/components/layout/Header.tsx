@@ -9,30 +9,34 @@ export function Header() {
   const { items: images } = useImages();
   const { items: docs } = useDocuments();
 
-  const navItems: Array<{ id: SectionId; label: string; count?: number }> = [
-    { id: "portal", label: "Início" },
-    { id: "photos", label: "Fotos", count: images.length || undefined },
-    { id: "docs", label: "Documentos", count: docs.length || undefined },
+  const navItems: Array<{ id: SectionId; numeral: string; label: string; count?: number }> = [
+    { id: "portal", numeral: "I", label: "Início" },
+    { id: "photos", numeral: "II", label: "Fotos", count: images.length || undefined },
+    { id: "docs", numeral: "III", label: "Documentos", count: docs.length || undefined },
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--bg-deep)]/75 backdrop-blur-md">
-      <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3.5 sm:grid-cols-[1fr_auto_1fr] sm:px-8">
-        {/* Marca à esquerda */}
-        <div className="flex items-center">
+    <header className="sticky top-0 z-40 border-b border-[#FDE2B9]/18 bg-[#120307]/85">
+      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-4 py-2.5 sm:px-8">
+        {/* Assinatura editorial à esquerda */}
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setSection("portal")}
-            className="font-display text-xl font-semibold tracking-tight text-[var(--fg-primary)] transition-opacity hover:opacity-80 cursor-pointer"
+            className="font-display text-lg font-semibold tracking-tight text-[#FDE2B9] hover:text-[#BC9200] transition-colors cursor-pointer"
           >
             Revela
           </button>
+          <span className="hidden h-3 w-[1px] bg-[#FDE2B9]/25 sm:inline-block" />
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-[#FDE2B9]/55 md:inline-block">
+            Estúdio de lote
+          </span>
         </div>
 
-        {/* Navegação centralizada */}
+        {/* Régua de navegação centralizada */}
         <nav
-          aria-label="Navegação principal"
-          className="flex items-center justify-center gap-6 sm:gap-10"
+          aria-label="Seções do Revela"
+          className="flex items-center divide-x divide-[#FDE2B9]/18 border border-[#FDE2B9]/25 bg-black/35"
         >
           {navItems.map((item) => {
             const active = section === item.id;
@@ -41,48 +45,40 @@ export function Header() {
                 key={item.id}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`relative py-1.5 text-xs sm:text-sm tracking-wide transition-colors cursor-pointer ${
+                className={`relative flex items-baseline gap-2 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.12em] transition-colors cursor-pointer sm:px-6 ${
                   active
-                    ? "font-semibold text-[var(--fg-primary)]"
-                    : "font-normal text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                    ? "text-[#140509] font-semibold"
+                    : "text-[#FDE2B9]/80 hover:text-[#FDE2B9]"
                 }`}
               >
-                <span className="inline-flex items-baseline gap-1.5">
-                  <span>{item.label}</span>
-                  {item.count !== undefined && (
-                    <span className="font-mono text-[10px] text-[var(--accent-bright)]">
-                      {String(item.count).padStart(2, "0")}
-                    </span>
-                  )}
-                </span>
-
                 {active && (
                   <motion.span
-                    layoutId="revela-center-underline"
-                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                    className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-[var(--accent)]"
+                    layoutId="revela-ruler-active"
+                    transition={{ type: "spring", stiffness: 440, damping: 34 }}
+                    className="absolute inset-0 bg-[#FDE2B9]"
                   />
+                )}
+                <span className="relative z-10 text-[10px] opacity-65">{item.numeral}.</span>
+                <span className="relative z-10">{item.label}</span>
+                {item.count !== undefined && (
+                  <span
+                    className={`relative z-10 font-mono text-[10px] ${
+                      active ? "text-[#60011D] font-bold" : "text-[#BC9200]"
+                    }`}
+                  >
+                    [{String(item.count).padStart(2, "0")}]
+                  </span>
                 )}
               </button>
             );
           })}
         </nav>
 
-        {/* Indicador discreto à direita */}
-        <div className="hidden items-center justify-end font-mono text-[11px] text-[var(--fg-muted)] sm:flex">
-          {section === "photos" && (
-            <span>01 / Fotos ({images.length})</span>
-          )}
-          {section === "docs" && (
-            <span>02 / Documentos ({docs.length})</span>
-          )}
-          {section === "portal" && (images.length > 0 || docs.length > 0) && (
-            <span>
-              {images.length > 0 ? `${images.length} foto(s)` : ""}
-              {images.length > 0 && docs.length > 0 ? " · " : ""}
-              {docs.length > 0 ? `${docs.length} doc(s)` : ""}
-            </span>
-          )}
+        {/* Coordenada técnica à direita */}
+        <div className="hidden items-center justify-end font-mono text-[10px] uppercase tracking-[0.16em] text-[#FDE2B9]/60 sm:flex">
+          {section === "portal" && <span>ESTUÁRIO · 50 / 50</span>}
+          {section === "photos" && <span className="text-[#9EDEE5]">BORDÔ #60011D</span>}
+          {section === "docs" && <span className="text-[#F4BFC2]">PETRÓLEO #0B3B46</span>}
         </div>
       </div>
     </header>

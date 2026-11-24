@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { AnimatePresence, MotionConfig } from "framer-motion";
 import { SectionProvider, useSection } from "../state/section";
 import { ToastProvider } from "../state/toasts";
@@ -13,18 +12,17 @@ import { DocumentStudio } from "../features/documents/DocumentStudio";
 
 function Shell() {
   const { section } = useSection();
-  const titleAnchorRef = useRef<HTMLHeadingElement | null>(null);
 
   return (
     <div className="relative min-h-screen">
-      <EstuaryCanvas titleAnchorRef={titleAnchorRef} />
+      <EstuaryCanvas />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         <Header />
 
         <main className="flex-1">
           <AnimatePresence mode="wait">
-            {section === "portal" && <Portal key="portal" titleAnchorRef={titleAnchorRef} />}
+            {section === "portal" && <Portal key="portal" />}
             {section === "photos" && <ImageStudio key="photos" />}
             {section === "docs" && <DocumentStudio key="docs" />}
           </AnimatePresence>

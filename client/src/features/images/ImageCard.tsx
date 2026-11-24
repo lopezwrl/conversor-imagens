@@ -14,10 +14,10 @@ interface ImageCardProps {
   onZoom: (src: string, title: string, meta: string) => void;
 }
 
-const CUTOUT_OPTIONS: Array<{ id: CutoutMode; label: string; hint: string }> = [
-  { id: "automatico", label: "Rápido", hint: "Fundo uniforme" },
-  { id: "inteligente", label: "Refinado", hint: "Contornos e detalhes" },
-  { id: "manual", label: "Manual", hint: "Ajuste com pincel" },
+const CUTOUT_MODES: Array<{ id: CutoutMode; code: string; label: string }> = [
+  { id: "automatico", code: "C1", label: "Rápido" },
+  { id: "inteligente", code: "C2", label: "Refinado" },
+  { id: "manual", code: "C3", label: "Pincel" },
 ];
 
 export function ImageCard({
@@ -31,32 +31,21 @@ export function ImageCard({
   const outBase = resolveOutputBaseName(item.nomeBase, item.nomePersonalizado, index, renameRule);
   const outName = `${outBase}.${IMAGE_FORMAT_EXT[item.formato]}`;
   const isOpaqueTarget = item.removerFundo && OPAQUE_IMAGE_FORMATS.has(item.formato);
+  const frameCode = `FRAME ${String(index + 1).padStart(3, "0")}`;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-[6px] border border-[var(--line)] bg-[var(--bg-panel)] transition-colors hover:border-[var(--line-strong)]">
-      {/* Miniatura */}
-      <div
-        className={`relative aspect-[16/10] overflow-hidden border-b border-[var(--line)] ${
-          item.removerFundo ? "checkerboard" : "bg-[var(--bg-deep)]"
-        }`}
-      >
-        <img
-          src={item.urlMiniatura}
-          alt={item.nome}
-          loading="lazy"
-          className="h-full w-full object-contain"
-        />
+    <article className="group flex flex-col border border-[var(--line-strong)] bg-[#190309]/92 transition-colors hover:border-[var(--accent)]">
+      {/* Borda superior estilo tira de contato fotográfico */}
+      <div className="flex items-center justify-between border-b border-[var(--line)] bg-[#120206] px-3 py-1.5 font-mono text-[10px] tracking-[0.12em]">
+        <div className="flex items-center gap-2">
+          <span className="text-[var(--accent-bright)] font-semibold">{frameCode}</span>
+          <span className="text-[var(--fg-muted)]">
+            {item.larguraOriginal}×{item.alturaOriginal}
+          </span>
+          <span className="text-[var(--fg-muted)]">{formatBytes(item.tamanhoBytes)}</span>
+        </div>
 
-        <span className="absolute left-2 top-2 rounded-[2px] bg-[var(--bg-deep)]/85 px-1.5 py-0.5 font-mono text-[10px] text-[var(--fg-secondary)]">
-          {String(index + 1).padStart(2, "0")}
-        </span>
-
-        <div className="absolute right-2 top-2 flex items-center gap-1">
-          {item.removerFundo && (
-            <span className="rounded-[2px] border border-[var(--line-gold)] bg-[var(--bg-deep)]/90 px-1.5 py-0.5 font-mono text-[10px] text-[var(--accent-bright)]">
-              Recorte: {CUTOUT_OPTIONS.find((c) => c.id === item.modoRemocao)?.label}
-            </span>
-          )}
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() =>
@@ -66,41 +55,56 @@ export function ImageCard({
                 `${item.larguraOriginal}×${item.alturaOriginal}px · ${formatBytes(item.tamanhoBytes)}`
               )
             }
-            aria-label="Ampliar imagem"
-            className="flex h-6 w-6 items-center justify-center rounded-[3px] bg-[var(--bg-deep)]/85 text-[var(--fg-primary)] hover:text-[var(--accent-bright)] cursor-pointer"
+            aria-label="Ampliar fotograma"
+            className="p-0.5 text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] cursor-pointer"
           >
-            <Maximize2 className="h-3 w-3" strokeWidth={1.5} />
+            <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
           </button>
           <button
             type="button"
             onClick={() => onRemove(item.id)}
-            aria-label="Remover imagem"
-            className="flex h-6 w-6 items-center justify-center rounded-[3px] bg-[var(--bg-deep)]/85 text-[var(--fg-secondary)] hover:text-[var(--status-err)] cursor-pointer"
+            aria-label="Remover fotograma"
+            className="p-0.5 text-[var(--fg-secondary)] hover:text-[var(--status-err)] cursor-pointer"
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
           </button>
         </div>
       </div>
 
-      {/* Cabeçalho de metadados */}
-      <div className="border-b border-[var(--line)] px-3.5 py-2.5">
-        <p className="truncate font-mono text-xs text-[var(--fg-primary)]" title={item.nome}>
-          {item.nome}
-        </p>
-        <div className="mt-0.5 flex items-center justify-between gap-2 font-mono text-[11px] text-[var(--fg-muted)]">
-          <span>
-            {item.larguraOriginal}×{item.alturaOriginal}px · {formatBytes(item.tamanhoBytes)}
+      {/* Janela do fotograma com marcas de corte nos 4 cantos */}
+      <div
+        className={`relative aspect-[16/10] overflow-hidden border-b border-[var(--line)] p-2 ${
+          item.removerFundo ? "checkerboard" : "bg-[#110205]"
+        }`}
+      >
+        <img
+          src={item.urlMiniatura}
+          alt={item.nome}
+          loading="lazy"
+          className="h-full w-full object-contain"
+        />
+
+        {item.removerFundo && (
+          <span className="absolute bottom-2 left-2 border border-[var(--accent)] bg-[#120206]/90 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[var(--accent-bright)]">
+            Recorte {CUTOUT_MODES.find((c) => c.id === item.modoRemocao)?.label}
           </span>
-          <span className="truncate text-[var(--accent-bright)]">{outName}</span>
-        </div>
+        )}
       </div>
 
-      {/* Controles */}
-      <div className="grid grid-cols-2 gap-2.5 p-3.5">
+      {/* Linha de origem -> destino */}
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--line)] bg-[#140207] px-3 py-2 font-mono text-[11px]">
+        <span className="truncate text-[var(--fg-muted)]" title={item.nome}>
+          {item.nome}
+        </span>
+        <span className="shrink-0 text-[var(--fg-primary)]">{outName}</span>
+      </div>
+
+      {/* Ficha técnica de controles do fotograma */}
+      <div className="grid grid-cols-2 gap-2.5 p-3">
         <div className="col-span-2">
           <div className="mb-1 flex items-center justify-between">
             <Label className="mb-0">
-              Nome de saída {item.nomePersonalizado !== null ? "(manual)" : ""}
+              Identificador de saída {item.nomePersonalizado !== null ? "(manual)" : ""}
             </Label>
             {item.nomePersonalizado !== null && (
               <button
@@ -109,7 +113,7 @@ export function ImageCard({
                 className="inline-flex items-center gap-1 font-mono text-[10px] text-[var(--accent-bright)] hover:underline cursor-pointer"
               >
                 <RotateCcw className="h-2.5 w-2.5" strokeWidth={1.5} />
-                Usar lote
+                Seguir lote
               </button>
             )}
           </div>
@@ -127,7 +131,7 @@ export function ImageCard({
         </div>
 
         <div>
-          <Label>Formato</Label>
+          <Label>Codificação</Label>
           <Select
             value={item.formato}
             onChange={(e) => onUpdate(item.id, { formato: e.target.value as ImageOutputFormat })}
@@ -141,7 +145,7 @@ export function ImageCard({
         </div>
 
         <div>
-          <Label>Qualidade</Label>
+          <Label>Qualidade (%)</Label>
           <Input
             type="number"
             min={1}
@@ -180,7 +184,7 @@ export function ImageCard({
           />
         </div>
 
-        <div className="col-span-2 flex items-center justify-between border-t border-[var(--line)] pt-2.5 text-xs">
+        <div className="col-span-2 flex items-center justify-between border-t border-[var(--line)] pt-2.5 font-mono text-[11px]">
           <label className="inline-flex items-center gap-2 text-[var(--fg-secondary)] cursor-pointer">
             <input
               type="checkbox"
@@ -188,44 +192,42 @@ export function ImageCard({
               onChange={(e) => onUpdate(item.id, { manterProporcao: e.target.checked })}
               className="accent-[var(--accent)]"
             />
-            Manter proporção
+            Travar proporção
           </label>
 
-          <label className="inline-flex items-center gap-2 font-medium text-[var(--fg-primary)] cursor-pointer">
+          <label className="inline-flex items-center gap-2 font-semibold text-[var(--fg-primary)] cursor-pointer">
             <input
               type="checkbox"
               checked={item.removerFundo}
               onChange={(e) => onUpdate(item.id, { removerFundo: e.target.checked })}
               className="accent-[var(--accent)]"
             />
-            Remover fundo
+            Isolar fundo
           </label>
         </div>
 
         {item.removerFundo && (
-          <div className="col-span-2 space-y-2.5 rounded-[4px] border border-[var(--line)] bg-[var(--bg-deep)]/55 p-2.5">
-            <div className="grid grid-cols-3 gap-1">
-              {CUTOUT_OPTIONS.map((opt) => (
+          <div className="col-span-2 space-y-2 border-t border-[var(--line)] bg-[#120206] p-2.5">
+            <div className="grid grid-cols-3 divide-x divide-[var(--line)] border border-[var(--line)]">
+              {CUTOUT_MODES.map((m) => (
                 <button
-                  key={opt.id}
+                  key={m.id}
                   type="button"
-                  onClick={() => onUpdate(item.id, { modoRemocao: opt.id })}
-                  className={`rounded-[3px] border px-2 py-1.5 text-left transition-colors cursor-pointer ${
-                    item.modoRemocao === opt.id
-                      ? "border-[var(--accent)] bg-[var(--bg-field)] text-[var(--fg-primary)]"
-                      : "border-transparent text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  onClick={() => onUpdate(item.id, { modoRemocao: m.id })}
+                  className={`px-2 py-1.5 text-left font-mono text-[10px] transition-colors cursor-pointer ${
+                    item.modoRemocao === m.id
+                      ? "bg-[#FDE2B9] font-semibold text-[#60011D]"
+                      : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
                   }`}
                 >
-                  <span className="block text-[11px] font-semibold">{opt.label}</span>
-                  <span className="block font-mono text-[9px] text-[var(--fg-muted)]">
-                    {opt.hint}
-                  </span>
+                  <span className="opacity-60">{m.code} </span>
+                  <span>{m.label}</span>
                 </button>
               ))}
             </div>
 
-            <label className="flex items-center justify-between gap-2 font-mono text-[11px] text-[var(--fg-secondary)]">
-              <span>Tolerância ({item.sensibilidadeFundo}%)</span>
+            <label className="flex items-center justify-between gap-2 font-mono text-[10px] text-[var(--fg-secondary)]">
+              <span>Limiar CIELAB ({item.sensibilidadeFundo}%)</span>
               <input
                 type="range"
                 min={10}
@@ -239,21 +241,14 @@ export function ImageCard({
             </label>
 
             {isOpaqueTarget && (
-              <div className="space-y-1.5 border-t border-[var(--line)] pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[var(--fg-secondary)]">
-                    Fundo sólido ({item.formato})
-                  </span>
-                  <input
-                    type="color"
-                    value={item.corFundo}
-                    onChange={(e) => onUpdate(item.id, { corFundo: e.target.value })}
-                    className="h-6 w-9 rounded-[2px] border border-[var(--line)] bg-transparent cursor-pointer"
-                  />
-                </div>
-                <p className="font-mono text-[10px] leading-relaxed text-[var(--status-warn)]">
-                  {item.formato} não possui canal de transparência. A cor acima preencherá o fundo recortado.
-                </p>
+              <div className="flex items-center justify-between border-t border-[var(--line)] pt-2 font-mono text-[10px] text-[var(--status-warn)]">
+                <span>Fundo sólido para {item.formato}:</span>
+                <input
+                  type="color"
+                  value={item.corFundo}
+                  onChange={(e) => onUpdate(item.id, { corFundo: e.target.value })}
+                  className="h-5 w-8 border border-[var(--line)] bg-transparent cursor-pointer"
+                />
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Archive, Download, Eye, Plus, Trash2, Upload } from "lucide-react";
+import { Archive, Download, Eye, Plus, Trash2 } from "lucide-react";
 import { useDocuments } from "../../state/documents";
 import { useToast } from "../../state/toasts";
 import type { DocResultRecord, DocStreamEvent } from "../../types/document";
@@ -22,15 +22,15 @@ import { DocumentRow } from "./DocumentRow";
 import { DocumentPreview } from "./DocumentPreview";
 
 const DOC_STAGES = [
-  { id: "lendo", label: "Leitura" },
-  { id: "convertendo", label: "Conversão" },
+  { id: "lendo", label: "Leitura estrutural" },
+  { id: "convertendo", label: "Diagramação" },
   { id: "finalizando", label: "Fechamento" },
 ];
 
 const STAGE_TEXT: Record<string, string> = {
   lendo: "Lendo estrutura",
-  convertendo: "Transformando conteúdo",
-  finalizando: "Gerando arquivo",
+  convertendo: "Diagramando conteúdo",
+  finalizando: "Fechando arquivo",
 };
 
 const STAGE_WEIGHT: Record<string, number> = {
@@ -58,9 +58,8 @@ export function DocumentStudio() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const dragIndexRef = useRef<number | null>(null);
 
-  const [dragActive, setDragActive] = useState(false);
   const [mergePdfMode, setMergePdfMode] = useState(false);
-  const [mergedPdfName, setMergedPdfName] = useState("documento_unificado");
+  const [mergedPdfName, setMergedPdfName] = useState("caderno_unificado");
 
   const [renameRule, setRenameRule] = useState<BatchRenameRule>({
     prefix: "",
@@ -93,14 +92,14 @@ export function DocumentStudio() {
   const handleIncoming = async (rawFiles: File[], fn?: string | null, hasFolder?: boolean) => {
     const valid = rawFiles.filter((f) => DOC_ACCEPTED_EXTENSIONS.has(getExtension(f.name)));
     if (!valid.length) {
-      notify("Formato não suportado em Documentos.", "warn");
+      notify("Formato não suportado na prancheta de Documentos.", "warn");
       return;
     }
     const added = await addFiles(valid, fn, hasFolder);
     if (added > 0) {
-      notify(`${added} ${added === 1 ? "documento adicionado" : "documentos adicionados"}.`, "ok");
+      notify(`${added} ${added === 1 ? "documento incluído" : "documentos incluídos"} na pauta.`, "ok");
     } else {
-      notify("Os documentos selecionados já estão na fila.", "neutral");
+      notify("Documentos já presentes na pauta.", "neutral");
     }
   };
 
@@ -111,7 +110,7 @@ export function DocumentStudio() {
 
     if (preset === "merge_pdf") {
       setMergePdfMode(true);
-      notify("Modo de unificação em um único PDF ativado.", "ok");
+      notify("D2 Encadernação em PDF único ativada.", "ok");
       return;
     }
 
@@ -119,7 +118,7 @@ export function DocumentStudio() {
 
     if (preset === "all_pdf") {
       updateAll(() => ({ formato: "PDF" }));
-      notify("Saída configurada para PDF em todos os arquivos.", "ok");
+      notify("D1 Converter todos para PDF aplicado.", "ok");
     } else if (preset === "split_pdf") {
       let count = 0;
       updateAll((d) => {
@@ -131,15 +130,15 @@ export function DocumentStudio() {
       });
       notify(
         count > 0
-          ? `${count} PDF(s) configurados para divisão por página.`
-          : "Adicione um arquivo PDF para dividir páginas.",
+          ? `D3 Desmembrar páginas aplicado em ${count} PDF(s).`
+          : "Inclua um arquivo PDF para desmembrar páginas.",
         count > 0 ? "ok" : "warn"
       );
     } else if (preset === "to_txt") {
       updateAll((d) =>
         getTargetDocFormats(d.extensao).includes("TXT") ? { formato: "TXT" } : {}
       );
-      notify("Extração de texto (.txt) selecionada.", "ok");
+      notify("D4 Extração de texto bruto (.txt) aplicada.", "ok");
     } else if (preset === "to_csv") {
       let count = 0;
       updateAll((d) => {
@@ -151,8 +150,8 @@ export function DocumentStudio() {
       });
       notify(
         count > 0
-          ? "Conversão para CSV (;) aplicada às planilhas."
-          : "Adicione planilhas XLSX ou arquivos JSON para converter em CSV.",
+          ? "D5 Conversão para CSV (;) aplicada."
+          : "Inclua planilhas XLSX ou JSON para exportar em CSV.",
         count > 0 ? "ok" : "warn"
       );
     } else if (preset === "to_json") {
@@ -166,8 +165,8 @@ export function DocumentStudio() {
       });
       notify(
         count > 0
-          ? "Conversão para JSON aplicada às planilhas."
-          : "Adicione XLSX ou CSV para converter em JSON.",
+          ? "D6 Conversão para JSON estruturado aplicada."
+          : "Inclua XLSX ou CSV para converter em JSON.",
         count > 0 ? "ok" : "warn"
       );
     }
@@ -178,7 +177,7 @@ export function DocumentStudio() {
 
     setProcessing(true);
     setProgressPct(4);
-    setProgressText(mergePdfMode ? "Unificando arquivos em PDF..." : "Iniciando transformação...");
+    setProgressText(mergePdfMode ? "Encadernando volume PDF..." : "Iniciando conversão...");
     setActiveStage("lendo");
     setResults([]);
     setLastZip(null);
@@ -206,7 +205,7 @@ export function DocumentStudio() {
     formData.append("config", JSON.stringify(config));
     formData.append("usar_zip", String(activeZip));
     formData.append("mesclar_pdf", String(mergePdfMode));
-    formData.append("nome_mesclado", mergedPdfName.trim() || "revela_unificado");
+    formData.append("nome_mesclado", mergedPdfName.trim() || "caderno_unificado");
     formData.append("nome_zip", `${folderName || "revela"}_documentos.zip`);
 
     const collected: DocResultRecord[] = [];
@@ -263,7 +262,7 @@ export function DocumentStudio() {
           }
         } else if (evt.tipo === "concluido") {
           setProgressPct(100);
-          setProgressText("Transformação concluída.");
+          setProgressText("Pauta concluída.");
           setQueue((prev) => prev.map((q) => (q.status === "erro" ? q : { ...q, status: "concluida" })));
           if (activeZip && evt.zip_base64) {
             const z = { base64: evt.zip_base64, nome: evt.nome_zip || "revela_documentos.zip" };
@@ -274,7 +273,7 @@ export function DocumentStudio() {
       });
 
       if (!completed && collected.length > 0) {
-        notify("Conexão encerrada antes do término; itens concluídos foram mantidos.", "warn");
+        notify("Conexão interrompida; arquivos já gerados foram preservados.", "warn");
       }
 
       setResults(collected);
@@ -282,8 +281,8 @@ export function DocumentStudio() {
       if (okCount > 0) {
         notify(
           mergePdfMode
-            ? "PDF unificado gerado."
-            : `${okCount} ${okCount === 1 ? "arquivo gerado" : "arquivos gerados"}.`,
+            ? "Volume PDF unificado gerado."
+            : `${okCount} ${okCount === 1 ? "documento gerado" : "documentos gerados"}.`,
           "ok"
         );
         window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 160);
@@ -324,181 +323,193 @@ export function DocumentStudio() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={async (e) => {
+        e.preventDefault();
+        const { files, folderName: fn, hasFolder } = await readDroppedItems(e.dataTransfer);
+        if (files.length) await handleIncoming(files, fn, hasFolder);
+      }}
       className="mx-auto max-w-7xl px-4 py-8 sm:px-8"
     >
-      {/* Cabeçalho editorial de Documentos */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line)] pb-5">
+      {/* Cabeçalho da Prancheta Editorial */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line-strong)] pb-5">
         <div>
-          <span className="font-mono text-xs tracking-[0.14em] text-[var(--water-opposite-tint)]">
-            02 / DOCUMENTOS
+          <span className="font-mono text-[11px] tracking-[0.2em] text-[#F4BFC2]">
+            SEÇÃO III · PRANCHETA EDITORIAL
           </span>
           <h1 className="mt-1 font-display text-4xl font-medium text-[var(--fg-primary)] sm:text-5xl">
-            Mesa de documentos
+            Pauta de documentos
           </h1>
         </div>
-        <p className="max-w-md text-xs sm:text-sm text-[var(--fg-secondary)]">
-          Converta formatos de texto e planilha, divida páginas ou unifique a fila em um único PDF.
-        </p>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex h-10 items-center gap-2 border border-[var(--line-strong)] bg-[#04181D] px-4 font-mono text-xs uppercase tracking-wider text-[var(--fg-primary)] hover:border-[var(--accent)] cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5 text-[var(--accent-bright)]" strokeWidth={1.5} />
+            Incluir documentos
+          </button>
+
+          {docs.length > 0 && (
+            <button
+              type="button"
+              disabled={processing}
+              onClick={runDocsBatch}
+              className="h-10 border border-[#BC9200] bg-[#FDE2B9] px-6 font-mono text-xs font-semibold uppercase tracking-wider text-[#0B3B46] hover:bg-white disabled:opacity-45 cursor-pointer"
+            >
+              {processing
+                ? "Processando..."
+                : mergePdfMode
+                ? `Encadernar PDF [${docs.length}]`
+                : `Transformar pauta [${docs.length}]`}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Área de entrada */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragActive(true);
-        }}
-        onDragLeave={() => setDragActive(false)}
-        onDrop={async (e) => {
-          e.preventDefault();
-          setDragActive(false);
-          const { files, folderName: fn, hasFolder } = await readDroppedItems(e.dataTransfer);
-          if (files.length) await handleIncoming(files, fn, hasFolder);
-        }}
-        className={`mb-7 flex flex-col items-center justify-between gap-4 rounded-[6px] border border-dashed px-6 py-6 transition-colors sm:flex-row ${
-          dragActive
-            ? "border-[var(--accent)] bg-[var(--bg-field)]"
-            : "border-[var(--line-strong)] bg-[var(--bg-panel)]"
-        }`}
-      >
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="flex flex-1 items-center gap-3.5 cursor-pointer"
-        >
-          <Upload className="h-5 w-5 shrink-0 text-[var(--accent-bright)]" strokeWidth={1.5} />
-          <div>
-            <p className="text-sm font-medium text-[var(--fg-primary)]">
-              {docs.length > 0
-                ? "Arraste mais documentos, planilhas ou imagens para acrescentar à fila"
-                : "Arraste PDFs, Word (.docx), Excel (.xlsx), CSV, JSON, Markdown, HTML ou imagens"}
-            </p>
-            <p className="font-mono text-[11px] text-[var(--fg-muted)]">
-              Arraste os cartões abaixo para alterar a ordem antes de unificar ou numerar
-            </p>
+      {/* Estado vazio da prancheta */}
+      {docs.length === 0 && (
+        <div className="my-12 border-y border-[var(--line-strong)] bg-[#04181D]/85 py-16 px-6 text-center">
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#F4BFC2]">
+            PAUTA VAZIA · 000 DOCUMENTOS
+          </span>
+          <h2 className="mt-3 font-display text-3xl font-medium text-[var(--fg-primary)] sm:text-4xl">
+            Solte PDFs, textos, planilhas ou imagens sobre a prancheta
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-xs sm:text-sm text-[var(--fg-secondary)]">
+            Aceita PDF, Word (.docx), Excel (.xlsx), CSV, JSON, Markdown, HTML, TXT e imagens para geração ou encadernação de PDFs.
+          </p>
+          <div className="mt-7 flex justify-center">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-10 border border-[#BC9200] bg-[#FDE2B9] px-6 font-mono text-xs font-semibold uppercase tracking-wider text-[#0B3B46] hover:bg-white cursor-pointer"
+            >
+              + Selecionar documentos
+            </button>
           </div>
         </div>
+      )}
 
-        <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-          Selecionar documentos
-        </Button>
-      </div>
-
-      {/* Painel de lote */}
+      {/* Comando da Prancheta + Pauta */}
       {docs.length > 0 && (
-        <section className="mb-8 space-y-5 rounded-[6px] border border-[var(--line)] bg-[var(--bg-panel)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-3.5">
-            <div className="flex items-baseline gap-3">
-              <h2 className="font-display text-xl font-medium text-[var(--fg-primary)]">
-                Operação do lote
-              </h2>
-              <span className="font-mono text-xs text-[var(--fg-muted)]">
-                {docs.length} {docs.length === 1 ? "arquivo" : "arquivos"}
-              </span>
-            </div>
-
-            <Button
-              size="sm"
-              variant="danger"
+        <section className="mb-10 border border-[var(--line-strong)] bg-[#04181D]/92">
+          {/* Barra superior de teclas D1..D6 */}
+          <div className="flex flex-wrap items-center justify-between border-b border-[var(--line)] bg-[#031216] px-4 py-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+              OPERAÇÕES DE PAUTA · {docs.length} ITEM(NS)
+            </span>
+            <button
+              type="button"
               onClick={() => {
                 clearAll();
                 setResults([]);
                 setLastZip(null);
                 setMergePdfMode(false);
               }}
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--status-err)] hover:underline cursor-pointer"
             >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Esvaziar fila
-            </Button>
+              <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+              Limpar pauta
+            </button>
           </div>
 
-          {/* Predefinições */}
-          <div>
-            <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--fg-muted)]">
-              Predefinições rápidas
-            </span>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {[
-                { id: "all_pdf" as const, title: "Converter em PDF", meta: "1 PDF por arquivo" },
-                { id: "merge_pdf" as const, title: "Unificar em 1 PDF", meta: "Junta toda a fila" },
-                { id: "split_pdf" as const, title: "Dividir PDF", meta: "1 arquivo por página" },
-                { id: "to_txt" as const, title: "Extrair texto", meta: "Saída .txt" },
-                { id: "to_csv" as const, title: "Planilha em CSV", meta: "Separador (;)" },
-                { id: "to_json" as const, title: "Planilha em JSON", meta: "Lista estruturada" },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => applyPreset(p.id)}
-                  className={`flex flex-col items-start rounded-[4px] border px-3 py-2 text-left transition-colors cursor-pointer ${
-                    p.id === "merge_pdf" && mergePdfMode
-                      ? "border-[var(--accent)] bg-[var(--bg-hover)]"
-                      : "border-[var(--line)] bg-[var(--bg-field)] hover:border-[var(--accent)]"
-                  }`}
-                >
-                  <span className="text-xs font-semibold text-[var(--fg-primary)]">{p.title}</span>
-                  <span className="font-mono text-[10px] text-[var(--fg-muted)]">{p.meta}</span>
-                </button>
-              ))}
-            </div>
+          <div className="grid grid-cols-2 divide-x divide-y divide-[var(--line)] border-b border-[var(--line)] sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+            {[
+              { id: "all_pdf" as const, code: "D1", title: "Tudo em PDF", spec: "1 PDF / item" },
+              { id: "merge_pdf" as const, code: "D2", title: "Encadernar PDF", spec: "Volume único" },
+              { id: "split_pdf" as const, code: "D3", title: "Desmembrar PDF", spec: "1 pág / arquivo" },
+              { id: "to_txt" as const, code: "D4", title: "Texto Bruto", spec: "Extrair .txt" },
+              { id: "to_csv" as const, code: "D5", title: "Tabela CSV", spec: "Excel BR (;)" },
+              { id: "to_json" as const, code: "D6", title: "Dados JSON", spec: "Array objetos" },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p.id)}
+                className={`flex flex-col items-start px-3.5 py-2.5 text-left transition-colors cursor-pointer ${
+                  p.id === "merge_pdf" && mergePdfMode
+                    ? "bg-[#0A2830]"
+                    : "hover:bg-[#072229]"
+                }`}
+              >
+                <div className="flex w-full items-baseline justify-between font-mono text-[10px]">
+                  <span className="text-[var(--accent-bright)] font-semibold">{p.code}</span>
+                  <span className="text-[var(--fg-muted)]">{p.spec}</span>
+                </div>
+                <span className="mt-1 text-xs font-semibold text-[var(--fg-primary)]">{p.title}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Opção de Unificação em PDF único */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] px-3.5 py-2.5">
-            <label className="inline-flex items-center gap-2.5 text-xs font-medium text-[var(--fg-primary)] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={mergePdfMode}
-                onChange={(e) => setMergePdfMode(e.target.checked)}
-                className="h-3.5 w-3.5 accent-[var(--accent)]"
-              />
-              Unificar os {docs.length} arquivos da fila em um único documento PDF
-            </label>
-
-            {mergePdfMode && (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-[var(--fg-secondary)]">Arquivo:</span>
-                <Input
-                  type="text"
-                  value={mergedPdfName}
-                  onChange={(e) => setMergedPdfName(e.target.value)}
-                  className="h-8 w-52 font-mono"
-                  placeholder="documento_unificado"
+          {/* Configurações de Encadernação ou Renomeação em lote */}
+          <div className="space-y-4 border-b border-[var(--line)] p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="inline-flex items-center gap-2.5 font-mono text-xs font-semibold text-[var(--fg-primary)] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={mergePdfMode}
+                  onChange={(e) => setMergePdfMode(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--accent)]"
                 />
-                <span className="font-mono text-xs text-[var(--accent-bright)]">.pdf</span>
-              </div>
+                Encadernar todos os {docs.length} itens da pauta em um único volume PDF
+              </label>
+
+              {mergePdfMode && (
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-[var(--fg-secondary)]">
+                    Volume final:
+                  </span>
+                  <Input
+                    type="text"
+                    value={mergedPdfName}
+                    onChange={(e) => setMergedPdfName(e.target.value)}
+                    className="h-8 w-52 font-mono"
+                    placeholder="caderno_unificado"
+                  />
+                  <span className="font-mono text-xs text-[var(--accent-bright)]">.pdf</span>
+                </div>
+              )}
+            </div>
+
+            {!mergePdfMode && (
+              <>
+                <BatchRename
+                  rule={renameRule}
+                  onChange={setRenameRule}
+                  sampleExtension={DOC_FORMAT_EXT[docs[0]?.formato || "PDF"]}
+                  sampleOriginalBase={docs[0]?.nomeBase || "documento"}
+                  hasCustomNames={hasCustomNames}
+                  onResetCustomNames={() => updateAll(() => ({ nomePersonalizado: null }))}
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                  <label className="inline-flex items-center gap-2.5 font-mono text-xs text-[var(--fg-secondary)] cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={useZip}
+                      onChange={(e) => setUseZip(e.target.checked)}
+                      className="h-3.5 w-3.5 accent-[var(--accent)]"
+                    />
+                    Agrupar documentos convertidos em arquivo .ZIP
+                  </label>
+                </div>
+              </>
             )}
           </div>
 
-          {!mergePdfMode && (
-            <>
-              <BatchRename
-                rule={renameRule}
-                onChange={setRenameRule}
-                sampleExtension={DOC_FORMAT_EXT[docs[0]?.formato || "PDF"]}
-                sampleOriginalBase={docs[0]?.nomeBase || "documento"}
-                hasCustomNames={hasCustomNames}
-                onResetCustomNames={() => updateAll(() => ({ nomePersonalizado: null }))}
-              />
+          {/* Cabeçalho das colunas da Pauta */}
+          <div className="hidden border-b border-[var(--line)] bg-[#031216] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[auto_1.4fr_1.6fr_auto] lg:gap-3">
+            <span className="w-28">ÍNDICE / TIPO</span>
+            <span>ORIGEM E DESTINO</span>
+            <span>IDENTIFICADOR / CONVERSÃO / PARÂMETROS</span>
+            <span className="text-right">ORDEM</span>
+          </div>
 
-              <div className="border-t border-[var(--line)] pt-3">
-                <label className="inline-flex items-center gap-2.5 text-xs text-[var(--fg-secondary)] cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={useZip}
-                    onChange={(e) => setUseZip(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[var(--accent)]"
-                  />
-                  Agrupar documentos gerados em um pacote ZIP ao concluir
-                </label>
-              </div>
-            </>
-          )}
-        </section>
-      )}
-
-      {/* Grade de documentos */}
-      {docs.length > 0 && (
-        <section className="mb-8">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Linhas da Pauta Editorial */}
+          <div>
             {docs.map((item, index) => (
               <DocumentRow
                 key={item.id}
@@ -523,62 +534,56 @@ export function DocumentStudio() {
               />
             ))}
           </div>
-        </section>
-      )}
 
-      {/* Barra de ação */}
-      {docs.length > 0 && (
-        <section className="mb-10 rounded-[6px] border border-[var(--line-strong)] bg-[var(--bg-panel)] p-5 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              size="lg"
+          {/* Rodapé da Pauta */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#031216] px-4 py-3.5">
+            <span className="font-mono text-[11px] text-[var(--fg-muted)]">
+              Arraste as linhas para reordenar a numeração ou a sequência do PDF unificado.
+            </span>
+
+            <button
+              type="button"
               disabled={processing}
               onClick={runDocsBatch}
-              className="min-w-[230px]"
+              className="h-10 border border-[#BC9200] bg-[#FDE2B9] px-6 font-mono text-xs font-semibold uppercase tracking-wider text-[#0B3B46] hover:bg-white disabled:opacity-45 cursor-pointer"
             >
               {processing
                 ? "Processando..."
                 : mergePdfMode
-                ? `Unificar ${docs.length} arquivos em PDF`
-                : `Transformar ${docs.length} ${docs.length === 1 ? "documento" : "documentos"}`}
-            </Button>
-
-            <Button
-              size="lg"
-              variant="secondary"
-              disabled={processing}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              Adicionar
-            </Button>
+                ? `Encadernar ${docs.length} itens em PDF`
+                : `Executar conversão [${docs.length}]`}
+            </button>
           </div>
 
-          <ProcessingPanel
-            visible={processing}
-            percent={progressPct}
-            statusText={progressText}
-            stages={DOC_STAGES}
-            activeStage={activeStage}
-            queue={queue}
-          />
+          {processing && (
+            <div className="border-t border-[var(--line)] px-5 pb-5">
+              <ProcessingPanel
+                visible={processing}
+                percent={progressPct}
+                statusText={progressText}
+                stages={DOC_STAGES}
+                activeStage={activeStage}
+                queue={queue}
+              />
+            </div>
+          )}
         </section>
       )}
 
-      {/* Resultados */}
+      {/* Resultados em Pauta */}
       {results.length > 0 && (
         <section
           ref={resultsRef}
-          className="rounded-[6px] border border-[var(--line-strong)] bg-[var(--bg-panel)] p-5"
+          className="border border-[var(--line-strong)] bg-[#04181D]/95 p-5"
         >
-          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3 border-b border-[var(--line)] pb-4">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-b border-[var(--line)] pb-4">
             <div>
-              <h2 className="font-display text-2xl font-medium text-[var(--fg-primary)]">
-                Arquivos gerados
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#F4BFC2]">
+                PAUTA CONCLUÍDA
+              </span>
+              <h2 className="mt-1 font-display text-2xl font-medium text-[var(--fg-primary)]">
+                Documentos expedidos
               </h2>
-              <p className="text-xs text-[var(--fg-secondary)]">
-                Visualize no navegador ou baixe cada documento individualmente.
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -602,12 +607,12 @@ export function DocumentStudio() {
                   setLastZip(null);
                 }}
               >
-                Nova sessão
+                Nova pauta
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="divide-y divide-[var(--line)] border border-[var(--line)]">
             {results.map((r, i) => {
               const canPreview =
                 r.status === "ok" &&
@@ -622,41 +627,34 @@ export function DocumentStudio() {
               return (
                 <article
                   key={`${r.salvo_como || r.nome}-${i}`}
-                  className={`flex flex-col justify-between rounded-[6px] border bg-[var(--bg-field)] p-4 ${
-                    r.status === "ok" ? "border-[var(--line)]" : "border-[var(--status-err)]/50"
-                  }`}
+                  className="flex flex-wrap items-center justify-between gap-3 bg-[#031216] px-4 py-3"
                 >
                   {r.status === "ok" ? (
                     <>
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="rounded-[2px] border border-[var(--line-strong)] bg-[var(--bg-deep)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--fg-primary)]">
-                            {getExtension(r.salvo_como || "") || "doc"}
-                          </span>
-                          <span className="font-mono text-[11px] text-[var(--fg-muted)]">
-                            {r.tamanho_bytes ? formatBytes(r.tamanho_bytes) : ""}
-                            {r.paginas ? ` · ${r.paginas} pág.` : ""}
-                          </span>
-                        </div>
-                        <p className="mt-2 truncate font-mono text-xs text-[var(--fg-primary)]">
-                          {r.salvo_como}
-                        </p>
-                        <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--fg-muted)]">
-                          Origem: {r.nome}
-                        </p>
-
-                        {r.aviso && (
-                          <p className="mt-2 rounded-[4px] border border-[var(--line-gold)] bg-[var(--bg-deep)]/60 p-2 font-mono text-[10px] text-[var(--accent-bright)]">
-                            {r.aviso}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="font-mono text-xs text-[#F4BFC2]">
+                          {String(i + 1).padStart(3, "0")}
+                        </span>
+                        <span className="border border-[var(--line-strong)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--fg-primary)]">
+                          {getExtension(r.salvo_como || "") || "doc"}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-mono text-xs text-[var(--fg-primary)]">
+                            {r.salvo_como}
                           </p>
-                        )}
+                          <p className="font-mono text-[10px] text-[var(--fg-muted)]">
+                            Origem: {r.nome}
+                            {r.tamanho_bytes ? ` · ${formatBytes(r.tamanho_bytes)}` : ""}
+                            {r.paginas ? ` · ${r.paginas} pág.` : ""}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-end gap-2 border-t border-[var(--line)] pt-3">
+                      <div className="flex items-center gap-2">
                         {canPreview && (
                           <Button size="sm" variant="secondary" onClick={() => openPreview(r)}>
                             <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
-                            Visualizar
+                            Inspecionar
                           </Button>
                         )}
                         {r.dados && (
@@ -681,7 +679,7 @@ export function DocumentStudio() {
                   ) : (
                     <div>
                       <p className="font-mono text-xs text-[var(--status-err)]">{r.nome}</p>
-                      <p className="mt-1 text-xs text-[var(--fg-secondary)]">{r.mensagem}</p>
+                      <p className="mt-0.5 text-xs text-[var(--fg-secondary)]">{r.mensagem}</p>
                     </div>
                   )}
                 </article>

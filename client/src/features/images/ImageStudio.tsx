@@ -1,14 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Archive,
-  Download,
-  FolderOpen,
-  Paintbrush,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Archive, Download, FolderOpen, Paintbrush, Plus, Trash2 } from "lucide-react";
 import { useImages } from "../../state/images";
 import { useDocuments } from "../../state/documents";
 import { useSection } from "../../state/section";
@@ -40,15 +32,15 @@ import { MaskEditor } from "./MaskEditor";
 import { Lightbox } from "./Lightbox";
 
 const STAGES = [
-  { id: "removendo_fundo", label: "Recorte de fundo" },
-  { id: "redimensionando", label: "Redimensionamento" },
+  { id: "removendo_fundo", label: "Isolamento CIELAB" },
+  { id: "redimensionando", label: "Escala LANCZOS3" },
   { id: "convertendo", label: "Codificação" },
 ];
 
 const STAGE_TEXT: Record<string, string> = {
-  removendo_fundo: "Recortando fundo",
+  removendo_fundo: "Isolando fundo",
   redimensionando: "Redimensionando",
-  convertendo: "Convertendo formato",
+  convertendo: "Codificando formato",
 };
 
 const STAGE_WEIGHT: Record<string, number> = {
@@ -77,8 +69,6 @@ export function ImageStudio() {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const [dragActive, setDragActive] = useState(false);
-
   const [renameRule, setRenameRule] = useState<BatchRenameRule>({
     prefix: "",
     suffix: "",
@@ -87,7 +77,6 @@ export function ImageStudio() {
     separator: "_",
   });
 
-  // Controles em lote
   const [bulkFormat, setBulkFormat] = useState<"" | ImageOutputFormat>("");
   const [bulkWidth, setBulkWidth] = useState("");
   const [bulkHeight, setBulkHeight] = useState("");
@@ -96,7 +85,6 @@ export function ImageStudio() {
   const [bulkCutout, setBulkCutout] = useState<"" | "on" | "off">("");
   const [bulkCutoutMode, setBulkCutoutMode] = useState<"" | CutoutMode>("");
 
-  // Processamento
   const [processing, setProcessing] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
   const [progressText, setProgressText] = useState("");
@@ -105,7 +93,6 @@ export function ImageStudio() {
   const [results, setResults] = useState<ImageResultRecord[]>([]);
   const [lastZip, setLastZip] = useState<{ base64: string; nome: string } | null>(null);
 
-  // Modais
   const [editingMask, setEditingMask] = useState<{
     dadosBase64: string;
     mime: string;
@@ -131,9 +118,9 @@ export function ImageStudio() {
     if (imgs.length > 0) {
       const added = await addFiles(imgs, fn, hasFolder);
       if (added > 0) {
-        notify(`${added} ${added === 1 ? "imagem adicionada" : "imagens adicionadas"}.`, "ok");
+        notify(`${added} ${added === 1 ? "fotograma adicionado" : "fotogramas adicionados"}.`, "ok");
       } else {
-        notify("Arquivos já presentes na fila.", "neutral");
+        notify("Arquivos já presentes na bancada.", "neutral");
       }
       return;
     }
@@ -141,11 +128,11 @@ export function ImageStudio() {
     if (docs.length > 0) {
       await addDocs(docs, fn, hasFolder);
       setSection("docs");
-      notify("Documento transferido para a seção Documentos.", "neutral");
+      notify("Documento transferido para a prancheta de Documentos.", "neutral");
       return;
     }
 
-    notify("Nenhuma imagem compatível encontrada.", "warn");
+    notify("Formato de imagem não reconhecido.", "warn");
   };
 
   const applyPreset = (
@@ -154,7 +141,7 @@ export function ImageStudio() {
     if (!images.length) return;
     if (preset === "webp") {
       updateAll(() => ({ formato: "WEBP", qualidade: 82, manterProporcao: true }));
-      notify("Configuração Web (WEBP 82%) aplicada.", "ok");
+      notify("F1 Web WEBP (82%) aplicado.", "ok");
     } else if (preset === "catalogo") {
       updateAll(() => ({
         formato: "JPEG",
@@ -165,7 +152,7 @@ export function ImageStudio() {
         modoAjuste: "inside",
         corFundo: "#ffffff",
       }));
-      notify("Configuração Catálogo (1200×1200 JPEG) aplicada.", "ok");
+      notify("F2 Catálogo (1200×1200 JPEG) aplicado.", "ok");
     } else if (preset === "quadrado") {
       updateAll(() => ({
         formato: "JPEG",
@@ -175,7 +162,7 @@ export function ImageStudio() {
         manterProporcao: true,
         modoAjuste: "cover",
       }));
-      notify("Configuração Quadrado (1080×1080 preenchido) aplicada.", "ok");
+      notify("F3 Quadrado (1080×1080) aplicado.", "ok");
     } else if (preset === "metade") {
       updateAll((img) => ({
         largura: String(Math.max(1, Math.round(img.larguraOriginal / 2))),
@@ -183,17 +170,17 @@ export function ImageStudio() {
         qualidade: 85,
         manterProporcao: true,
       }));
-      notify("Redução de 50% nas dimensões aplicada.", "ok");
+      notify("F4 Escala 50% aplicada.", "ok");
     } else if (preset === "png") {
       updateAll(() => ({ formato: "PNG", qualidade: 100, manterProporcao: true }));
-      notify("Configuração PNG sem perda aplicada.", "ok");
+      notify("F5 PNG sem perda aplicado.", "ok");
     } else if (preset === "recorte") {
       updateAll(() => ({
         formato: "PNG",
         removerFundo: true,
         modoRemocao: "inteligente",
       }));
-      notify("Recorte de fundo refinado em PNG aplicado.", "ok");
+      notify("F6 Recorte de fundo aplicado.", "ok");
     }
   };
 
@@ -207,7 +194,7 @@ export function ImageStudio() {
       removerFundo: bulkCutout ? bulkCutout === "on" : img.removerFundo,
       modoRemocao: bulkCutoutMode || img.modoRemocao,
     }));
-    notify("Parâmetros aplicados ao lote.", "ok");
+    notify("Parâmetros replicados em todos os fotogramas.", "ok");
   };
 
   const runBatch = async () => {
@@ -215,7 +202,7 @@ export function ImageStudio() {
 
     setProcessing(true);
     setProgressPct(2);
-    setProgressText("Enviando arquivos...");
+    setProgressText("Iniciando lote...");
     setActiveStage(null);
     setResults([]);
     setLastZip(null);
@@ -247,7 +234,7 @@ export function ImageStudio() {
 
     const activeZip = useZip && !hasManualCutout;
     if (hasManualCutout && useZip) {
-      notify("Modo manual ativo: arquivos entregues individualmente para ajuste com pincel.", "neutral");
+      notify("Modo pincel ativo: entrega individual habilitada para edição da máscara.", "neutral");
     }
 
     formData.append("config", JSON.stringify(config));
@@ -259,7 +246,7 @@ export function ImageStudio() {
     try {
       const response = await fetch("/api/images/batch", { method: "POST", body: formData });
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ erro: "Falha ao processar imagens." }));
+        const err = await response.json().catch(() => ({ erro: "Falha ao processar lote." }));
         notify(err.erro || "Falha ao processar lote.", "err");
         return;
       }
@@ -307,7 +294,7 @@ export function ImageStudio() {
           }
         } else if (evt.tipo === "concluido") {
           setProgressPct(100);
-          setProgressText("Processamento concluído.");
+          setProgressText("Revelação concluída.");
           if (activeZip && evt.zip_base64) {
             const z = { base64: evt.zip_base64, nome: evt.nome_zip || "revela_imagens.zip" };
             setLastZip(z);
@@ -318,7 +305,7 @@ export function ImageStudio() {
 
       if (!completed && collected.length > 0) {
         notify(
-          `Processamento interrompido: ${collected.length} de ${images.length} concluídas.`,
+          `Conexão interrompida: ${collected.length} de ${images.length} concluídas.`,
           "warn"
         );
       }
@@ -326,7 +313,7 @@ export function ImageStudio() {
       setResults(collected);
       const okCount = collected.filter((r) => r.status === "ok").length;
       if (okCount > 0) {
-        notify(`${okCount} ${okCount === 1 ? "imagem processada" : "imagens processadas"}.`, "ok");
+        notify(`${okCount} ${okCount === 1 ? "imagem revelada" : "imagens reveladas"}.`, "ok");
         window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 160);
       }
     } catch {
@@ -351,240 +338,274 @@ export function ImageStudio() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={async (e) => {
+        e.preventDefault();
+        const { files, folderName: fn, hasFolder } = await readDroppedItems(e.dataTransfer);
+        if (files.length) await handleIncomingFiles(files, fn, hasFolder);
+      }}
       className="mx-auto max-w-7xl px-4 py-8 sm:px-8"
     >
-      {/* Cabeçalho editorial da seção Fotos */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line)] pb-5">
+      {/* Cabeçalho da Câmara de Imagem com ações imediatas */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line-strong)] pb-5">
         <div>
-          <span className="font-mono text-xs tracking-[0.14em] text-[var(--water-opposite-tint)]">
-            01 / FOTOS
+          <span className="font-mono text-[11px] tracking-[0.2em] text-[#9EDEE5]">
+            SEÇÃO II · CÂMARA DE IMAGEM
           </span>
           <h1 className="mt-1 font-display text-4xl font-medium text-[var(--fg-primary)] sm:text-5xl">
-            Laboratório de imagens
+            Folha de contato
           </h1>
         </div>
-        <p className="max-w-md text-xs sm:text-sm text-[var(--fg-secondary)]">
-          Redimensione, converta formatos, padronize nomes em lote e recorte fundos.
-        </p>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex h-10 items-center gap-2 border border-[var(--line-strong)] bg-[#190309] px-4 font-mono text-xs uppercase tracking-wider text-[var(--fg-primary)] hover:border-[var(--accent)] cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5 text-[var(--accent-bright)]" strokeWidth={1.5} />
+            Adicionar fotos
+          </button>
+
+          <button
+            type="button"
+            onClick={() => folderInputRef.current?.click()}
+            className="inline-flex h-10 items-center gap-2 border border-[var(--line-strong)] bg-[#190309] px-4 font-mono text-xs uppercase tracking-wider text-[var(--fg-primary)] hover:border-[var(--accent)] cursor-pointer"
+          >
+            <FolderOpen className="h-3.5 w-3.5 text-[var(--accent-bright)]" strokeWidth={1.5} />
+            Pasta
+          </button>
+
+          {images.length > 0 && (
+            <button
+              type="button"
+              disabled={processing}
+              onClick={runBatch}
+              className="h-10 border border-[#BC9200] bg-[#FDE2B9] px-6 font-mono text-xs font-semibold uppercase tracking-wider text-[#60011D] hover:bg-white disabled:opacity-45 cursor-pointer"
+            >
+              {processing ? "Revelando..." : `Revelar lote [${images.length}]`}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Área de entrada de arquivos */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragActive(true);
-        }}
-        onDragLeave={() => setDragActive(false)}
-        onDrop={async (e) => {
-          e.preventDefault();
-          setDragActive(false);
-          const { files, folderName: fn, hasFolder } = await readDroppedItems(e.dataTransfer);
-          if (files.length) await handleIncomingFiles(files, fn, hasFolder);
-        }}
-        className={`mb-7 flex flex-col items-center justify-between gap-4 rounded-[6px] border border-dashed px-6 py-6 transition-colors sm:flex-row ${
-          dragActive
-            ? "border-[var(--accent)] bg-[var(--bg-field)]"
-            : "border-[var(--line-strong)] bg-[var(--bg-panel)]"
-        }`}
-      >
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="flex flex-1 items-center gap-3.5 cursor-pointer"
-        >
-          <Upload className="h-5 w-5 shrink-0 text-[var(--accent-bright)]" strokeWidth={1.5} />
-          <div>
-            <p className="text-sm font-medium text-[var(--fg-primary)]">
-              {images.length > 0
-                ? "Arraste mais fotos ou pastas para acrescentar à fila"
-                : "Arraste fotos ou uma pasta inteira para começar"}
-            </p>
-            <p className="font-mono text-[11px] text-[var(--fg-muted)]">
-              PNG, JPEG, WEBP, AVIF, GIF, TIFF e BMP · Arquivos idênticos são ignorados automaticamente
-            </p>
+      {/* Estado vazio com personalidade de mesa de luz (sem dropzone tracejada genérica) */}
+      {images.length === 0 && (
+        <div className="my-12 border-y border-[var(--line-strong)] bg-[#190309]/80 py-16 px-6 text-center">
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#9EDEE5]">
+            BANCADA VAZIA · 000 FOTOGRAMAS
+          </span>
+          <h2 className="mt-3 font-display text-3xl font-medium text-[var(--fg-primary)] sm:text-4xl">
+            Solte suas imagens ou uma pasta inteira sobre a mesa
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-xs sm:text-sm text-[var(--fg-secondary)]">
+            Aceita PNG, JPEG, WEBP, AVIF, TIFF, GIF e BMP. Arquivos repetidos são filtrados por assinatura SHA-256.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-10 border border-[#BC9200] bg-[#FDE2B9] px-6 font-mono text-xs font-semibold uppercase tracking-wider text-[#60011D] hover:bg-white cursor-pointer"
+            >
+              + Selecionar imagens
+            </button>
+            <button
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+              className="inline-flex h-10 items-center gap-2 border border-[var(--line-strong)] bg-[#120206] px-5 font-mono text-xs uppercase tracking-wider text-[var(--fg-primary)] hover:border-[var(--accent)] cursor-pointer"
+            >
+              <FolderOpen className="h-3.5 w-3.5 text-[var(--accent-bright)]" strokeWidth={1.5} />
+              Carregar pasta
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-            Selecionar fotos
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => folderInputRef.current?.click()}>
-            <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.5} />
-            Pasta
-          </Button>
-        </div>
-      </div>
-
-      {/* Painel de controle em lote */}
+      {/* Bancada técnica de comando em lote */}
       {images.length > 0 && (
-        <section className="mb-8 space-y-5 rounded-[6px] border border-[var(--line)] bg-[var(--bg-panel)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-3.5">
-            <div className="flex items-baseline gap-3">
-              <h2 className="font-display text-xl font-medium text-[var(--fg-primary)]">
-                Parâmetros do lote
-              </h2>
-              <span className="font-mono text-xs text-[var(--fg-muted)]">
-                {images.length} {images.length === 1 ? "arquivo" : "arquivos"}
-              </span>
-            </div>
-
-            <Button
-              size="sm"
-              variant="danger"
+        <section className="mb-8 border border-[var(--line-strong)] bg-[#190309]/92">
+          {/* Barra 1: Teclas de função F1..F6 */}
+          <div className="flex flex-wrap items-center justify-between border-b border-[var(--line)] bg-[#120206] px-4 py-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+              TECLAS DE BANCADA · {images.length} FOTOGRAMA(S)
+            </span>
+            <button
+              type="button"
               onClick={() => {
                 clearAll();
                 setResults([]);
                 setLastZip(null);
               }}
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--status-err)] hover:underline cursor-pointer"
             >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Esvaziar fila
-            </Button>
+              <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+              Limpar mesa
+            </button>
           </div>
 
-          {/* Presets discretos em barra */}
-          <div>
-            <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--fg-muted)]">
-              Predefinições rápidas
-            </span>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {[
-                { id: "webp" as const, title: "Web WEBP", meta: "WEBP · 82%" },
-                { id: "catalogo" as const, title: "Catálogo", meta: "1200×1200 · JPEG" },
-                { id: "quadrado" as const, title: "Quadrado", meta: "1080×1080 · Cover" },
-                { id: "metade" as const, title: "Reduzir 50%", meta: "Metade da escala" },
-                { id: "png" as const, title: "PNG sem perda", meta: "PNG · 100%" },
-                { id: "recorte" as const, title: "Recortar fundo", meta: "PNG · Refinado" },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => applyPreset(p.id)}
-                  className="flex flex-col items-start rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] px-3 py-2 text-left transition-colors hover:border-[var(--accent)] cursor-pointer"
+          <div className="grid grid-cols-2 divide-x divide-y divide-[var(--line)] border-b border-[var(--line)] sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+            {[
+              { id: "webp" as const, code: "F1", title: "Web WEBP", spec: "82% · leve" },
+              { id: "catalogo" as const, code: "F2", title: "Catálogo", spec: "1200×1200 · JPG" },
+              { id: "quadrado" as const, code: "F3", title: "Quadrado", spec: "1080×1080 · Cover" },
+              { id: "metade" as const, code: "F4", title: "Escala 50%", spec: "Metade px" },
+              { id: "png" as const, code: "F5", title: "PNG Puro", spec: "100% · sem perda" },
+              { id: "recorte" as const, code: "F6", title: "Isolar Fundo", spec: "PNG · CIELAB" },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p.id)}
+                className="flex flex-col items-start px-3.5 py-2.5 text-left transition-colors hover:bg-[var(--bg-field)] cursor-pointer"
+              >
+                <div className="flex w-full items-baseline justify-between font-mono text-[10px]">
+                  <span className="text-[var(--accent-bright)] font-semibold">{p.code}</span>
+                  <span className="text-[var(--fg-muted)]">{p.spec}</span>
+                </div>
+                <span className="mt-1 text-xs font-semibold text-[var(--fg-primary)]">{p.title}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Barra 2: Parâmetros globais + Renomeação */}
+          <div className="space-y-5 p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8 items-end">
+              <div>
+                <Label>Formato</Label>
+                <Select
+                  value={bulkFormat}
+                  onChange={(e) => setBulkFormat(e.target.value as "" | ImageOutputFormat)}
                 >
-                  <span className="text-xs font-semibold text-[var(--fg-primary)]">{p.title}</span>
-                  <span className="font-mono text-[10px] text-[var(--fg-muted)]">{p.meta}</span>
-                </button>
-              ))}
+                  <option value="">Manter</option>
+                  {IMAGE_FORMATS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>Largura (px)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="Original"
+                  className="font-mono"
+                  value={bulkWidth}
+                  onChange={(e) => setBulkWidth(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Altura (px)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="Original"
+                  className="font-mono"
+                  value={bulkHeight}
+                  onChange={(e) => setBulkHeight(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Qualidade</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  className="font-mono"
+                  value={bulkQuality}
+                  onChange={(e) => setBulkQuality(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Proporção</Label>
+                <Select
+                  value={bulkRatio}
+                  onChange={(e) => setBulkRatio(e.target.value as "" | "on" | "off")}
+                >
+                  <option value="">Manter</option>
+                  <option value="on">Travar</option>
+                  <option value="off">Livre</option>
+                </Select>
+              </div>
+              <div>
+                <Label>Isolar fundo</Label>
+                <Select
+                  value={bulkCutout}
+                  onChange={(e) => setBulkCutout(e.target.value as "" | "on" | "off")}
+                >
+                  <option value="">Manter</option>
+                  <option value="on">Ativar todas</option>
+                  <option value="off">Desativar</option>
+                </Select>
+              </div>
+              <div>
+                <Label>Modo recorte</Label>
+                <Select
+                  value={bulkCutoutMode}
+                  onChange={(e) => setBulkCutoutMode(e.target.value as "" | CutoutMode)}
+                >
+                  <option value="">Manter</option>
+                  <option value="automatico">C1 Rápido</option>
+                  <option value="inteligente">C2 Refinado</option>
+                  <option value="manual">C3 Pincel</option>
+                </Select>
+              </div>
+              <Button variant="secondary" onClick={applyBulk} className="w-full">
+                Replicar
+              </Button>
+            </div>
+
+            <BatchRename
+              rule={renameRule}
+              onChange={setRenameRule}
+              sampleExtension={IMAGE_FORMAT_EXT[images[0]?.formato || "PNG"]}
+              sampleOriginalBase={images[0]?.nomeBase || "imagem"}
+              hasCustomNames={hasCustomNames}
+              onResetCustomNames={() => updateAll(() => ({ nomePersonalizado: null }))}
+            />
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+              <label className="inline-flex items-center gap-2.5 font-mono text-xs text-[var(--fg-secondary)] cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={useZip}
+                  onChange={(e) => setUseZip(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--accent)]"
+                />
+                Empacotar saída em arquivo único .ZIP
+              </label>
+
+              <button
+                type="button"
+                disabled={processing}
+                onClick={runBatch}
+                className="h-9 border border-[#BC9200] bg-[#FDE2B9] px-5 font-mono text-xs font-semibold uppercase tracking-wider text-[#60011D] hover:bg-white disabled:opacity-45 cursor-pointer"
+              >
+                {processing ? "Processando..." : `Revelar ${images.length} fotograma(s)`}
+              </button>
             </div>
           </div>
 
-          {/* Controles dimensionais em lote */}
-          <div className="grid grid-cols-2 gap-3 border-t border-[var(--line)] pt-4 sm:grid-cols-4 lg:grid-cols-8 items-end">
-            <div>
-              <Label>Formato</Label>
-              <Select
-                value={bulkFormat}
-                onChange={(e) => setBulkFormat(e.target.value as "" | ImageOutputFormat)}
-              >
-                <option value="">Manter</option>
-                {IMAGE_FORMATS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label>Largura (px)</Label>
-              <Input
-                type="number"
-                min={1}
-                placeholder="Original"
-                className="font-mono"
-                value={bulkWidth}
-                onChange={(e) => setBulkWidth(e.target.value)}
+          {processing && (
+            <div className="border-t border-[var(--line)] px-5 pb-5">
+              <ProcessingPanel
+                visible={processing}
+                percent={progressPct}
+                statusText={progressText}
+                stages={STAGES}
+                activeStage={activeStage}
+                queue={queue}
               />
             </div>
-            <div>
-              <Label>Altura (px)</Label>
-              <Input
-                type="number"
-                min={1}
-                placeholder="Original"
-                className="font-mono"
-                value={bulkHeight}
-                onChange={(e) => setBulkHeight(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Qualidade</Label>
-              <Input
-                type="number"
-                min={1}
-                max={100}
-                className="font-mono"
-                value={bulkQuality}
-                onChange={(e) => setBulkQuality(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Proporção</Label>
-              <Select
-                value={bulkRatio}
-                onChange={(e) => setBulkRatio(e.target.value as "" | "on" | "off")}
-              >
-                <option value="">Manter</option>
-                <option value="on">Preservar</option>
-                <option value="off">Livre</option>
-              </Select>
-            </div>
-            <div>
-              <Label>Remover fundo</Label>
-              <Select
-                value={bulkCutout}
-                onChange={(e) => setBulkCutout(e.target.value as "" | "on" | "off")}
-              >
-                <option value="">Manter</option>
-                <option value="on">Ativar em todas</option>
-                <option value="off">Desativar</option>
-              </Select>
-            </div>
-            <div>
-              <Label>Modo de recorte</Label>
-              <Select
-                value={bulkCutoutMode}
-                onChange={(e) => setBulkCutoutMode(e.target.value as "" | CutoutMode)}
-              >
-                <option value="">Manter</option>
-                <option value="automatico">Rápido</option>
-                <option value="inteligente">Refinado</option>
-                <option value="manual">Manual</option>
-              </Select>
-            </div>
-            <Button variant="secondary" onClick={applyBulk} className="w-full">
-              Aplicar ao lote
-            </Button>
-          </div>
-
-          {/* Renomeação em lote */}
-          <BatchRename
-            rule={renameRule}
-            onChange={setRenameRule}
-            sampleExtension={IMAGE_FORMAT_EXT[images[0]?.formato || "PNG"]}
-            sampleOriginalBase={images[0]?.nomeBase || "imagem"}
-            hasCustomNames={hasCustomNames}
-            onResetCustomNames={() => updateAll(() => ({ nomePersonalizado: null }))}
-          />
-
-          <div className="border-t border-[var(--line)] pt-3">
-            <label className="inline-flex items-center gap-2.5 text-xs text-[var(--fg-secondary)] cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={useZip}
-                onChange={(e) => setUseZip(e.target.checked)}
-                className="h-3.5 w-3.5 accent-[var(--accent)]"
-              />
-              Agrupar arquivos convertidos em um pacote ZIP ao concluir
-            </label>
-          </div>
+          )}
         </section>
       )}
 
-      {/* Grade de cartões */}
+      {/* Folha de contato: grade de fotogramas */}
       {images.length > 0 && (
-        <section className="mb-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mb-10">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {images.map((item, index) => (
               <ImageCard
                 key={item.id}
@@ -600,61 +621,27 @@ export function ImageStudio() {
         </section>
       )}
 
-      {/* Barra de execução */}
-      {images.length > 0 && (
-        <section className="mb-10 rounded-[6px] border border-[var(--line-strong)] bg-[var(--bg-panel)] p-5 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              size="lg"
-              disabled={processing}
-              onClick={runBatch}
-              className="min-w-[220px]"
-            >
-              {processing
-                ? "Revelando lote..."
-                : `Revelar ${images.length} ${images.length === 1 ? "imagem" : "imagens"}`}
-            </Button>
-
-            <Button
-              size="lg"
-              variant="secondary"
-              disabled={processing}
-              onClick={() => fileInputRef.current?.click()}
-              title="Acrescentar mais imagens"
-            >
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              Adicionar
-            </Button>
-          </div>
-
-          <ProcessingPanel
-            visible={processing}
-            percent={progressPct}
-            statusText={progressText}
-            stages={STAGES}
-            activeStage={activeStage}
-            queue={queue}
-          />
-        </section>
-      )}
-
-      {/* Resultados */}
+      {/* Resultados revelados */}
       {results.length > 0 && (
         <section
           ref={resultsRef}
-          className="rounded-[6px] border border-[var(--line-strong)] bg-[var(--bg-panel)] p-5"
+          className="border border-[var(--line-strong)] bg-[#190309]/95 p-5"
         >
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3 border-b border-[var(--line)] pb-4">
             <div>
-              <h2 className="font-display text-2xl font-medium text-[var(--fg-primary)]">
-                Resultados
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#9EDEE5]">
+                SAÍDA CONCLUÍDA · {stats.ok} DE {stats.total}
+              </span>
+              <h2 className="mt-1 font-display text-2xl font-medium text-[var(--fg-primary)]">
+                Provas reveladas
               </h2>
-              <p className="text-xs text-[var(--fg-secondary)]">
-                Arraste a linha divisória sobre a miniatura para comparar o original com o arquivo convertido.
-              </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-mono text-xs text-[var(--accent-bright)]">
+                {formatBytes(stats.origBytes)} → {formatBytes(stats.finalBytes)}
+                {stats.deltaPct > 0 ? ` (-${stats.deltaPct}%)` : ""}
+              </span>
               {lastZip && (
                 <Button
                   size="sm"
@@ -675,56 +662,18 @@ export function ImageStudio() {
                   setLastZip(null);
                 }}
               >
-                Nova sessão
+                Nova bancada
               </Button>
             </div>
           </div>
 
-          {/* Resumo numérico */}
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--fg-muted)]">
-                Total
-              </span>
-              <p className="mt-1 font-mono text-lg text-[var(--fg-primary)]">{stats.total}</p>
-            </div>
-            <div className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--fg-muted)]">
-                Concluídas
-              </span>
-              <p className="mt-1 font-mono text-lg text-[var(--status-ok)]">{stats.ok}</p>
-            </div>
-            <div className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--fg-muted)]">
-                Falhas
-              </span>
-              <p className="mt-1 font-mono text-lg text-[var(--status-err)]">{stats.err}</p>
-            </div>
-            <div className="rounded-[4px] border border-[var(--line)] bg-[var(--bg-field)] p-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--fg-muted)]">
-                Volume
-              </span>
-              <p className="mt-1 font-mono text-xs text-[var(--fg-primary)]">
-                {formatBytes(stats.origBytes)} para {formatBytes(stats.finalBytes)}
-              </p>
-              <span className="font-mono text-[10px] text-[var(--accent-bright)]">
-                {stats.deltaPct > 0
-                  ? `${stats.deltaPct}% de redução`
-                  : stats.deltaPct < 0
-                  ? `${Math.abs(stats.deltaPct)}% de acréscimo`
-                  : "mesmo tamanho"}
-              </span>
-            </div>
-          </div>
-
-          {/* Grade de cartões de resultado */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {results.map((r, i) => {
               const resUrl = r.dados && r.mime ? `data:${r.mime};base64,${r.dados}` : "";
               return (
                 <article
                   key={`${r.nome}-${i}`}
-                  className={`overflow-hidden rounded-[6px] border bg-[var(--bg-field)] ${
+                  className={`border bg-[#120206] ${
                     r.status === "ok" ? "border-[var(--line)]" : "border-[var(--status-err)]/50"
                   }`}
                 >
@@ -747,17 +696,15 @@ export function ImageStudio() {
                       </div>
 
                       <div className="p-3.5">
-                        <p className="truncate font-mono text-xs text-[var(--fg-primary)]">
-                          {r.salvo_como}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[11px] text-[var(--fg-muted)]">
-                          {r.dimensoes || ""}
-                          {r.dimensoes && r.tamanho_bytes ? " · " : ""}
-                          {r.tamanho_bytes ? formatBytes(r.tamanho_bytes) : ""}
-                        </p>
+                        <div className="flex items-baseline justify-between gap-2 font-mono text-xs">
+                          <span className="truncate text-[var(--fg-primary)]">{r.salvo_como}</span>
+                          <span className="shrink-0 text-[11px] text-[var(--fg-muted)]">
+                            {r.dimensoes} · {r.tamanho_bytes ? formatBytes(r.tamanho_bytes) : ""}
+                          </span>
+                        </div>
 
                         {r.aviso && (
-                          <p className="mt-2 rounded-[4px] border border-[var(--line-gold)] bg-[var(--bg-deep)]/60 p-2 font-mono text-[10px] leading-relaxed text-[var(--accent-bright)]">
+                          <p className="mt-2 border border-[var(--line-gold)] bg-[#190309] p-2 font-mono text-[10px] text-[var(--accent-bright)]">
                             {r.aviso}
                           </p>
                         )}
@@ -776,7 +723,7 @@ export function ImageStudio() {
                               }
                             >
                               <Paintbrush className="h-3.5 w-3.5" strokeWidth={1.5} />
-                              Máscara
+                              Retocar máscara
                             </Button>
                           )}
                           {r.dados && (
@@ -812,7 +759,6 @@ export function ImageStudio() {
         </section>
       )}
 
-      {/* Modais */}
       <AnimatePresence>
         {editingMask && (
           <MaskEditor
@@ -832,7 +778,6 @@ export function ImageStudio() {
         )}
       </AnimatePresence>
 
-      {/* Inputs ocultos */}
       <input
         ref={fileInputRef}
         type="file"
