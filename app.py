@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import base64
 import io
 import json
@@ -25,6 +26,20 @@ logger = logging.getLogger("revela")
 # Limite generoso para lotes grandes, mas evita uploads sem controle.
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024  # 300 MB
 
+=======
+import concurrent.futures
+import io
+import json
+import mimetypes
+import re
+import zipfile
+
+from flask import Flask, jsonify, render_template, request, send_file
+from PIL import Image, ImageOps
+
+app = Flask(__name__)
+
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
 FORMATOS_PILLOW = {
     "PNG": "PNG",
     "JPEG": "JPEG",
@@ -43,7 +58,11 @@ EXTENSAO_POR_FORMATO = {
     "TIFF": "tiff",
 }
 
+<<<<<<< HEAD
 MIME_POR_FORMATO = {
+=======
+MIMETYPES_POR_FORMATO = {
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
     "PNG": "image/png",
     "JPEG": "image/jpeg",
     "WEBP": "image/webp",
@@ -52,6 +71,7 @@ MIME_POR_FORMATO = {
     "TIFF": "image/tiff",
 }
 
+<<<<<<< HEAD
 # Formatos cujo encoder do Pillow preserva corretamente o canal alpha.
 FORMATOS_COM_ALPHA = {"PNG", "WEBP", "TIFF"}
 
@@ -60,6 +80,10 @@ EXTENSOES_VALIDAS = {"png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff", "tif"}
 CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
 CARACTERES_CONTROLE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 COR_HEX = re.compile(r"^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+=======
+CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
+CARACTERES_CONTROLE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
 
 
 def sanitizar_nome_arquivo(nome):
@@ -78,6 +102,7 @@ def sanitizar_nome_arquivo(nome):
         return ""
 
 
+<<<<<<< HEAD
 def extensao_do_arquivo(nome):
     if not nome or "." not in nome:
         return ""
@@ -88,6 +113,8 @@ def extensao_valida(nome):
     return extensao_do_arquivo(nome) in EXTENSOES_VALIDAS
 
 
+=======
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
 def resolver_nome_saida(nome_base, novo_nome, extensao, nomes_usados):
     """Define o nome final do arquivo respeitando novo_nome e incrementando colisoes."""
     candidato = sanitizar_nome_arquivo(novo_nome) if novo_nome else ""
@@ -106,6 +133,7 @@ def resolver_nome_saida(nome_base, novo_nome, extensao, nomes_usados):
         contador += 1
 
 
+<<<<<<< HEAD
 def cor_hex_para_rgb(cor, padrao=(255, 255, 255)):
     """Converte '#rrggbb' (ou '#rgb') em tupla RGB. Cai no padrão se inválida."""
     if not cor or not COR_HEX.match(cor):
@@ -167,6 +195,9 @@ def processar_imagem_stream(arquivo_stream, cfg):
         ("etapa", "removendo_fundo" | "redimensionando" | "convertendo")
         ("resultado", (dados_bytes, (largura, altura), aviso_ou_none))
     """
+=======
+def converter_uma_imagem(dados_bytes, cfg):
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
     formato = (cfg.get("formato") or "PNG").upper()
     if formato not in FORMATOS_PILLOW:
         formato = "PNG"
@@ -178,6 +209,7 @@ def processar_imagem_stream(arquivo_stream, cfg):
     qualidade = int(cfg.get("qualidade") or 90)
     qualidade = max(1, min(100, qualidade))
     manter_proporcao = cfg.get("manter_proporcao", True)
+<<<<<<< HEAD
     remover_fundo_flag = bool(cfg.get("remover_fundo"))
     cor_fundo = cor_hex_para_rgb(cfg.get("cor_fundo"))
     modo_remocao = (cfg.get("modo_remocao") or "automatico").lower()
@@ -268,6 +300,58 @@ def processar_imagem_stream(arquivo_stream, cfg):
     imagem_final.close()
 
     yield ("resultado", (dados, tamanho, aviso))
+=======
+
+    with Image.open(io.BytesIO(dados_bytes)) as raw_img:
+        # Corrige rotação automática de câmeras de celular (EXIF)
+        try:
+            img = ImageOps.exif_transpose(raw_img)
+        except Exception:
+            img = raw_img
+
+        # Tratamento de cores e canais de transparência
+        if formato in ("JPEG", "BMP"):
+            if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+                img_rgba = img.convert("RGBA")
+                fundo = Image.new("RGB", img_rgba.size, (255, 255, 255))
+                fundo.paste(img_rgba, mask=img_rgba.split()[3])
+                img_convertida = fundo
+            else:
+                img_convertida = img.convert("RGB")
+        elif formato in ("PNG", "WEBP"):
+            if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+                img_convertida = img.convert("RGBA")
+            else:
+                img_convertida = img.convert("RGB")
+        else:
+            img_convertida = img.convert("RGB")
+
+        # Redimensionamento
+        if largura or altura:
+            largura_atual, altura_atual = img_convertida.size
+            if manter_proporcao:
+                if largura and not altura:
+                    altura = max(1, round(altura_atual * (largura / largura_atual)))
+                elif altura and not largura:
+                    largura = max(1, round(largura_atual * (altura / altura_atual)))
+                elif largura and altura:
+                    img_convertida.thumbnail((largura, altura), Image.LANCZOS)
+                    largura, altura = img_convertida.size
+            largura = largura or largura_atual
+            altura = altura or altura_atual
+            if img_convertida.size != (largura, altura):
+                img_convertida = img_convertida.resize((largura, altura), Image.LANCZOS)
+
+        parametros_salvar = {}
+        if formato in ("JPEG", "WEBP"):
+            parametros_salvar["quality"] = qualidade
+            parametros_salvar["optimize"] = True
+
+        buffer = io.BytesIO()
+        img_convertida.save(buffer, format=FORMATOS_PILLOW[formato], **parametros_salvar)
+        buffer.seek(0)
+        return buffer.read(), img_convertida.size, formato
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
 
 
 @app.route("/")
@@ -278,7 +362,10 @@ def index():
 @app.route("/api/converter-lote", methods=["POST"])
 def api_converter_lote():
     arquivos = request.files.getlist("arquivos")
+<<<<<<< HEAD
     logger.info("Arquivos recebidos: %d", len(arquivos))
+=======
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
     if not arquivos:
         return jsonify({"erro": "Nenhum arquivo enviado."}), 400
 
@@ -287,6 +374,7 @@ def api_converter_lote():
     except json.JSONDecodeError:
         config = {}
 
+<<<<<<< HEAD
     usar_zip = request.form.get("usar_zip", "true").lower() == "true"
 
     # Salva os uploads em disco (arquivos temporários) em vez de manter
@@ -426,6 +514,110 @@ def api_converter_lote():
     # isso, o cliente só veria progresso quando o proxy decidisse liberar o
     # buffer (ou nunca, se isso estourar algum timeout do proxy antes).
     resposta.headers["X-Accel-Buffering"] = "no"
+=======
+    usar_zip_param = request.form.get("usar_zip", "true").lower() in ("true", "1", "on")
+
+    # Lê todos os bytes de forma segura antes de despachar para threads
+    itens_para_processar = []
+    for arquivo in arquivos:
+        itens_para_processar.append({
+            "nome_original": arquivo.filename,
+            "bytes": arquivo.read(),
+            "cfg": config.get(arquivo.filename, {}),
+        })
+
+    def processar_item(item):
+        nome_orig = item["nome_original"]
+        try:
+            dados_conv, dimensoes, formato = converter_uma_imagem(item["bytes"], item["cfg"])
+            return {
+                "nome": nome_orig,
+                "status": "ok",
+                "dados": dados_conv,
+                "dimensoes": f"{dimensoes[0]}x{dimensoes[1]}",
+                "formato": formato,
+                "cfg": item["cfg"],
+            }
+        except Exception as e:
+            return {
+                "nome": nome_orig,
+                "status": "erro",
+                "mensagem": str(e),
+                "cfg": item["cfg"],
+            }
+
+    # Processamento paralelo com ThreadPoolExecutor
+    max_workers = min(8, max(1, len(itens_para_processar)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        resultados_brutos = list(executor.map(processar_item, itens_para_processar))
+
+    # Resolução de nomes e montagem da resposta
+    nomes_usados = set()
+    arquivos_prontos = []
+    metadados_resultados = []
+
+    for r in resultados_brutos:
+        if r["status"] == "ok":
+            formato = r["formato"]
+            extensao = EXTENSAO_POR_FORMATO.get(formato, "png")
+            nome_base = r["nome"].rsplit(".", 1)[0]
+            novo_nome = r["cfg"].get("novo_nome")
+
+            nome_final = resolver_nome_saida(nome_base, novo_nome, extensao, nomes_usados)
+            nomes_usados.add(nome_final)
+
+            arquivos_prontos.append({
+                "nome_final": nome_final,
+                "dados": r["dados"],
+                "formato": formato,
+            })
+            metadados_resultados.append({
+                "nome": r["nome"],
+                "status": "ok",
+                "salvo_como": nome_final,
+                "dimensoes": r["dimensoes"],
+                "tamanho_kb": round(len(r["dados"]) / 1024, 1),
+            })
+        else:
+            metadados_resultados.append({
+                "nome": r["nome"],
+                "status": "erro",
+                "mensagem": r.get("mensagem", "Erro desconhecido"),
+            })
+
+    if not arquivos_prontos:
+        return jsonify({"erro": "Nenhuma imagem pôde ser convertida.", "detalhes": metadados_resultados}), 400
+
+    # Se apenas 1 arquivo foi convertido e o usuário não pediu zip, envia o arquivo diretamente
+    if not usar_zip_param and len(arquivos_prontos) == 1:
+        unico = arquivos_prontos[0]
+        buffer_unico = io.BytesIO(unico["dados"])
+        mimetype = MIMETYPES_POR_FORMATO.get(unico["formato"], "application/octet-stream")
+        resposta = send_file(
+            buffer_unico,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=unico["nome_final"],
+        )
+    else:
+        # Montagem do ZIP comprimido
+        buffer_zip = io.BytesIO()
+        with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            for item in arquivos_prontos:
+                zf.writestr(item["nome_final"], item["dados"])
+
+        buffer_zip.seek(0)
+        resposta = send_file(
+            buffer_zip,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name="revela_convertido.zip",
+        )
+
+    resultados_json = json.dumps(metadados_resultados, ensure_ascii=True)
+    resposta.headers["X-Resultados"] = resultados_json
+    resposta.headers["Access-Control-Expose-Headers"] = "X-Resultados"
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
     return resposta
 
 

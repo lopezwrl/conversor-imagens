@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 venv/
 __pycache__/
 *.pyc
@@ -6,3 +7,11 @@ server/dist/
 client/dist/
 .env
 *.log
+=======
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+.DS_Store
+Thumbs.db
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0

@@ -1,5 +1,9 @@
 Flask
+<<<<<<< HEAD
 Pillow
 gunicorn
 opencv-python-headless
 numpy
+=======
+Pillow
+>>>>>>> 48a6683f31590034e487d8cc4bdbf1b65368a5f0
